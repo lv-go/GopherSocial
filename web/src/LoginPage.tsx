@@ -21,11 +21,11 @@ export const LoginPage: React.FC = () => {
       const out = await data.json()
       setCookie("at", out.data)
 
-      console.log(out)
-
-      redirect("/feed")
+      if (!out.error) {
+        redirect("/")
+      }
     } catch (error) {
-      console.log({ error })
+      console.log('error: ', error)
     }
   }
 

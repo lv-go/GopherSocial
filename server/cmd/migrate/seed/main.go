@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	addr := env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost/socialnetwork?sslmode=disable")
+	addr := env.GetString("DB_ADDR", "postgres://admin:S3cureP%40ssw0rd%21@localhost/gopher_social?sslmode=disable")
 	conn, err := db.New(addr, 3, 3, "15m")
 	if err != nil {
 		log.Fatal(err)

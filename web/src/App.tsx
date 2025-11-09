@@ -7,12 +7,16 @@ import gohper from './../public/gohper.svg'
 import { CreatePostForm } from './CreatePostForm'
 
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/v1"
-export const fetcher = (at: string) => (url: string) => fetch(API_URL + url, {
-  method: "GET",
-  headers: {
-    Authorization: `Bearer ${at}`
-  }
-}).then(r => r.json())
+export const fetcher = (at: string) => (url: string) => {
+  return fetch(API_URL + url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${at}`
+    }
+  }).then(r => {
+    return r.json();
+  });
+}
 
 function App() {
   const [cookies, setCookie] = useCookies(['at']);
@@ -20,14 +24,15 @@ function App() {
 
   const redirect = useNavigate();
 
-  const { data, error, isLoading } = useSWR<{ data: FeedPost[] }>('/feed', at ? fetcher(at) : null)
+  const {data, error, isLoading} = useSWR<{ data: FeedPost[] }>('/feed', at ? fetcher(at) : null)
 
   if (error) return <div>failed to load</div>
   if (isLoading) return <div>loading...</div>
 
-  const { data: posts } = data
+  const {data: posts} = data ?? {data: []}
 
   const handleLogout = () => {
+    console.log("logging out...")
     setCookie("at", "")
     redirect("/")
     return
@@ -43,7 +48,7 @@ function App() {
     <div>
       <nav className='nav'>
         <div className='logo-container'>
-          <img src={gohper} className="logo" />
+          <img src={gohper} className="logo"/>
           <h1>GopherSocial</h1>
         </div>
 
@@ -52,11 +57,11 @@ function App() {
 
       <p>This is a social media platform for gophers.</p>
 
-      <CreatePostForm onFetchPosts={reFetchData} />
+      <CreatePostForm onFetchPosts={reFetchData}/>
 
       <div className='posts'>
         {posts.map(post => (
-          <Post key={post.id} post={post} onClick={handleClickPost(post.id)} />
+          <Post key={post.id} post={post} onClick={handleClickPost(post.id)}/>
         ))}
 
         {posts.length === 0 && <p>No posts yet, start following someone or post something</p>}

@@ -1,6 +1,7 @@
 tmp
 .env
 .envrc
+!/server/.env.local
 bin/
 
 # Logs
