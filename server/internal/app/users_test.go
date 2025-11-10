@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"net/http"
@@ -10,8 +10,8 @@ import (
 
 func TestGetUser(t *testing.T) {
 	withRedis := config{
-		redisCfg: redisConfig{
-			enabled: true,
+		RedisCfg: redisConfig{
+			Enabled: true,
 		},
 	}
 
@@ -79,8 +79,8 @@ func TestGetUser(t *testing.T) {
 
 	t.Run("should NOT hit the cache if it is not enabled", func(t *testing.T) {
 		withRedis := config{
-			redisCfg: redisConfig{
-				enabled: false,
+			RedisCfg: redisConfig{
+				Enabled: false,
 			},
 		}
 

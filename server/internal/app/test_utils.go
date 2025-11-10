@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"net/http"
@@ -25,8 +25,8 @@ func newTestApplication(t *testing.T, cfg config) *application {
 
 	// Rate limiter
 	rateLimiter := ratelimiter.NewFixedWindowLimiter(
-		cfg.rateLimiter.RequestsPerTimeFrame,
-		cfg.rateLimiter.TimeFrame,
+		cfg.RateLimiter.RequestsPerTimeFrame,
+		cfg.RateLimiter.TimeFrame,
 	)
 
 	return &application{

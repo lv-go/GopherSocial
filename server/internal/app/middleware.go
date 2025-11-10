@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// read the auth header
+			// read the Auth header
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				app.unauthorizedBasicErrorResponse(w, r, fmt.Errorf("authorization header is missing"))
@@ -79,8 +79,8 @@ func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
 			}
 
 			// check the credentials
-			username := app.config.auth.basic.user
-			pass := app.config.auth.basic.pass
+			username := app.config.Auth.Basic.User
+			pass := app.config.Auth.Basic.Pass
 
 			creds := strings.SplitN(string(decoded), ":", 2)
 			if len(creds) != 2 || creds[0] != username || creds[1] != pass {
@@ -128,7 +128,7 @@ func (app *application) checkRolePrecedence(ctx context.Context, user *store.Use
 }
 
 func (app *application) getUser(ctx context.Context, userID int64) (*store.User, error) {
-	if !app.config.redisCfg.enabled {
+	if !app.config.RedisCfg.Enabled {
 		return app.store.Users.GetByID(ctx, userID)
 	}
 
@@ -153,7 +153,7 @@ func (app *application) getUser(ctx context.Context, userID int64) (*store.User,
 
 func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if app.config.rateLimiter.Enabled {
+		if app.config.RateLimiter.Enabled {
 			if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
 				app.rateLimitExceededResponse(w, r, retryAfter.String())
 				return

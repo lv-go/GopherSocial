@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"net/http"
@@ -15,7 +15,7 @@ import (
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]string{
 		"status":  "ok",
-		"env":     app.config.env,
+		"Env":     app.config.Env,
 		"version": version,
 	}
 

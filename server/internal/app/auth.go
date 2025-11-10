@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"crypto/sha256"
@@ -70,7 +70,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	hash := sha256.Sum256([]byte(plainToken))
 	hashToken := hex.EncodeToString(hash[:])
 
-	err := app.store.Users.CreateAndInvite(ctx, user, hashToken, app.config.mail.exp)
+	err := app.store.Users.CreateAndInvite(ctx, user, hashToken, app.config.Mail.Exp)
 	if err != nil {
 		switch err {
 		case store.ErrDuplicateEmail:
@@ -87,9 +87,9 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		User:  user,
 		Token: plainToken,
 	}
-	activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL, plainToken)
+	activationURL := fmt.Sprintf("%s/confirm/%s", app.config.FrontendURL, plainToken)
 
-	isProdEnv := app.config.env == "production"
+	isProdEnv := app.config.Env == "production"
 	vars := struct {
 		Username      string
 		ActivationURL string
@@ -98,7 +98,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		ActivationURL: activationURL,
 	}
 
-	// send mail
+	// send Mail
 	status, err := app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
 	if err != nil {
 		app.logger.Errorw("error sending welcome email", "error", err)
@@ -167,11 +167,11 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 
 	claims := jwt.MapClaims{
 		"sub": user.ID,
-		"exp": time.Now().Add(app.config.auth.token.exp).Unix(),
+		"exp": time.Now().Add(app.config.Auth.Token.Exp).Unix(),
 		"iat": time.Now().Unix(),
 		"nbf": time.Now().Unix(),
-		"iss": app.config.auth.token.iss,
-		"aud": app.config.auth.token.iss,
+		"iss": app.config.Auth.Token.Iss,
+		"aud": app.config.Auth.Token.Iss,
 	}
 
 	token, err := app.authenticator.GenerateToken(claims)

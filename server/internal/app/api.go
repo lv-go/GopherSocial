@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -37,60 +37,60 @@ type application struct {
 }
 
 type config struct {
-	addr        string
-	db          dbConfig
-	env         string
-	apiURL      string
-	mail        mailConfig
-	frontendURL string
-	auth        authConfig
-	redisCfg    redisConfig
-	rateLimiter ratelimiter.Config
+	Addr        string
+	DB          dbConfig
+	Env         string
+	ApiURL      string
+	Mail        mailConfig
+	FrontendURL string
+	Auth        authConfig
+	RedisCfg    redisConfig
+	RateLimiter ratelimiter.Config
 }
 
 type redisConfig struct {
-	addr    string
-	pw      string
-	db      int
-	enabled bool
+	Addr    string
+	Pw      string
+	Db      int
+	Enabled bool
 }
 
 type authConfig struct {
-	basic basicConfig
-	token tokenConfig
+	Basic basicConfig
+	Token tokenConfig
 }
 
 type tokenConfig struct {
-	secret string
-	exp    time.Duration
-	iss    string
+	Secret string
+	Exp    time.Duration
+	Iss    string
 }
 
 type basicConfig struct {
-	user string
-	pass string
+	User string
+	Pass string
 }
 
 type mailConfig struct {
-	sendGrid  sendGridConfig
-	mailTrap  mailTrapConfig
-	fromEmail string
-	exp       time.Duration
+	SendGrid  sendGridConfig
+	MailTrap  mailTrapConfig
+	FromEmail string
+	Exp       time.Duration
 }
 
 type mailTrapConfig struct {
-	apiKey string
+	ApiKey string
 }
 
 type sendGridConfig struct {
-	apiKey string
+	ApiKey string
 }
 
 type dbConfig struct {
-	addr         string
-	maxOpenConns int
-	maxIdleConns int
-	maxIdleTime  string
+	Addr         string
+	MaxOpenConns int
+	MaxIdleConns int
+	MaxIdleTime  string
 }
 
 func (app *application) mount() http.Handler {
@@ -109,7 +109,7 @@ func (app *application) mount() http.Handler {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	if app.config.rateLimiter.Enabled {
+	if app.config.RateLimiter.Enabled {
 		r.Use(app.RateLimiterMiddleware)
 	}
 
@@ -123,7 +123,7 @@ func (app *application) mount() http.Handler {
 		r.Get("/health", app.healthCheckHandler)
 		r.With(app.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
-		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.Addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Route("/posts", func(r chi.Router) {
@@ -169,11 +169,11 @@ func (app *application) mount() http.Handler {
 func (app *application) run(mux http.Handler) error {
 	// Docs
 	docs.SwaggerInfo.Version = version
-	docs.SwaggerInfo.Host = app.config.apiURL
+	docs.SwaggerInfo.Host = app.config.ApiURL
 	docs.SwaggerInfo.BasePath = "/v1"
 
 	srv := &http.Server{
-		Addr:         app.config.addr,
+		Addr:         app.config.Addr,
 		Handler:      mux,
 		WriteTimeout: time.Second * 30,
 		ReadTimeout:  time.Second * 10,
@@ -196,7 +196,7 @@ func (app *application) run(mux http.Handler) error {
 		shutdown <- srv.Shutdown(ctx)
 	}()
 
-	app.logger.Infow("server has started", "addr", app.config.addr, "env", app.config.env)
+	app.logger.Infow("server has started", "Addr", app.config.Addr, "Env", app.config.Env)
 
 	err := srv.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
@@ -208,7 +208,7 @@ func (app *application) run(mux http.Handler) error {
 		return err
 	}
 
-	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
+	app.logger.Infow("server has stopped", "Addr", app.config.Addr, "Env", app.config.Env)
 
 	return nil
 }
