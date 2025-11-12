@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -7,7 +7,10 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/auth/auth"
 	"github.com/sikozonpc/social/internal/store"
+	"github.com/sikozonpc/social/internal/utils"
 )
 
 type postKey string
@@ -34,19 +37,19 @@ type CreatePostPayload struct {
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/posts [post]
-func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
+func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreatePostPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	user := getUserFromContext(r)
+	user := auth.GetUserFromContext(r)
 
 	post := &store.Post{
 		Title:   payload.Title,
@@ -57,15 +60,12 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := app.store.Posts.Create(ctx, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := app.Store.Posts.Create(ctx, post); err != nil {
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, post); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	utils.WriteJSON(w, http.StatusCreated, post)
 }
 
 // GetPost godoc
@@ -81,21 +81,18 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/posts/{id} [get]
-func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
+func GetPostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 
-	comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
+	comments, err := app.Store.Comments.GetByPostID(r.Context(), post.ID)
 	if err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
 	post.Comments = comments
 
-	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	utils.WriteJSON(w, http.StatusOK, post)
 }
 
 // DeletePost godoc
@@ -111,22 +108,22 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/posts/{id} [delete]
-func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
+func DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "postID")
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
 	ctx := r.Context()
 
-	if err := app.store.Posts.Delete(ctx, id); err != nil {
+	if err := app.Store.Posts.Delete(ctx, id); err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
+			utils.NotFoundResponse(w, r, err)
 		default:
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 		}
 		return
 	}
@@ -155,17 +152,17 @@ type UpdatePostPayload struct {
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/posts/{id} [patch]
-func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
+func UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 
 	var payload UpdatePostPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -178,33 +175,31 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := app.updatePost(ctx, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := updatePost(ctx, post); err != nil {
+		utils.InternalServerError(w, r, err)
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-		app.internalServerError(w, r, err)
-	}
+	utils.WriteJSON(w, http.StatusOK, post)
 }
 
-func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
+func PostsContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "postID")
 		id, err := strconv.ParseInt(idParam, 10, 64)
 		if err != nil {
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 			return
 		}
 
 		ctx := r.Context()
 
-		post, err := app.store.Posts.GetByID(ctx, id)
+		post, err := app.Store.Posts.GetByID(ctx, id)
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundResponse(w, r, err)
+				utils.NotFoundResponse(w, r, err)
 			default:
-				app.internalServerError(w, r, err)
+				utils.InternalServerError(w, r, err)
 			}
 			return
 		}
@@ -219,11 +214,45 @@ func getPostFromCtx(r *http.Request) *store.Post {
 	return post
 }
 
-func (app *application) updatePost(ctx context.Context, post *store.Post) error {
-	if err := app.store.Posts.Update(ctx, post); err != nil {
+func updatePost(ctx context.Context, post *store.Post) error {
+	if err := app.Store.Posts.Update(ctx, post); err != nil {
 		return err
 	}
 
-	app.cacheStorage.Users.Delete(ctx, post.UserID)
+	app.CacheStorage.Users.Delete(ctx, post.UserID)
 	return nil
+}
+
+func CheckPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := auth.GetUserFromContext(r)
+		post := getPostFromCtx(r)
+
+		if post.UserID == user.ID {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		allowed, err := checkRolePrecedence(r.Context(), user, requiredRole)
+		if err != nil {
+			utils.InternalServerError(w, r, err)
+			return
+		}
+
+		if !allowed {
+			utils.ForbiddenResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func checkRolePrecedence(ctx context.Context, user *store.User, roleName string) (bool, error) {
+	role, err := app.Store.Roles.GetByName(ctx, roleName)
+	if err != nil {
+		return false, err
+	}
+
+	return user.Role.Level >= role.Level, nil
 }

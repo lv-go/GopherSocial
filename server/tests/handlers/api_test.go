@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"net/http"
@@ -6,28 +6,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sikozonpc/social/internal/api"
+	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 )
 
 func TestRateLimiterMiddleware(t *testing.T) {
-	cfg := config{
-		rateLimiter: ratelimiter.Config{
+	cfg := config.Config{
+		RateLimiter: ratelimiter.Config{
 			RequestsPerTimeFrame: 20,
 			TimeFrame:            time.Second * 5,
 			Enabled:              true,
 		},
-		addr: ":8080",
+		Addr: ":8080",
 	}
 
-	app := newTestApplication(t, cfg)
-	ts := httptest.NewServer(app.mount())
+	setupTestApplication(t, cfg)
+	ts := httptest.NewServer(api.Mount())
 	defer ts.Close()
 
 	client := &http.Client{}
 	mockIP := "192.168.1.1"
 	marginOfError := 2
 
-	for i := 0; i < cfg.rateLimiter.RequestsPerTimeFrame+marginOfError; i++ {
+	for i := 0; i < cfg.RateLimiter.RequestsPerTimeFrame+marginOfError; i++ {
 		req, err := http.NewRequest("GET", ts.URL+"/v1/health", nil)
 		if err != nil {
 			t.Fatalf("could not create request: %v", err)
@@ -41,7 +43,7 @@ func TestRateLimiterMiddleware(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if i < cfg.rateLimiter.RequestsPerTimeFrame {
+		if i < cfg.RateLimiter.RequestsPerTimeFrame {
 			if resp.StatusCode != http.StatusOK {
 				t.Errorf("expected status OK; got %v", resp.Status)
 			}

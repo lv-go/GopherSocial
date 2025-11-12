@@ -1,15 +1,18 @@
-package main
+package handlers
 
 import (
 	"net/http"
 
+	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/auth/auth"
 	"github.com/sikozonpc/social/internal/store"
+	"github.com/sikozonpc/social/internal/utils"
 )
 
-// getUserFeedHandler godoc
+// GetUserFeedHandler godoc
 //
-//	@Summary		Fetches the user feed
-//	@Description	Fetches the user feed
+//	@Summary		Fetches the User feed
+//	@Description	Fetches the User feed
 //	@Tags			feed
 //	@Accept			json
 //	@Produce		json
@@ -25,7 +28,7 @@ import (
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/feed [get]
-func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Request) {
+func GetUserFeedHandler(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
 		Limit:  20,
 		Offset: 0,
@@ -36,25 +39,23 @@ func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Reques
 
 	fq, err := fq.Parse(r)
 	if err != nil {
-		app.badRequestResponse(w, r, err)
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(fq); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(fq); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
 	ctx := r.Context()
-	user := getUserFromContext(r)
+	user := auth.GetUserFromContext(r)
 
-	feed, err := app.store.Posts.GetUserFeed(ctx, user.ID, fq)
+	feed, err := app.Store.Posts.GetUserFeed(ctx, user.ID, fq)
 	if err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, feed); err != nil {
-		app.internalServerError(w, r, err)
-	}
+	utils.WriteJSON(w, http.StatusOK, feed)
 }

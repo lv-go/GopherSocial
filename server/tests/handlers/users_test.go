@@ -1,24 +1,27 @@
-package main
+package handlers
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/sikozonpc/social/internal/api"
+	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestGetUser(t *testing.T) {
-	withRedis := config{
-		redisCfg: redisConfig{
-			enabled: true,
+	withRedis := config.Config{
+		RedisCfg: config.RedisConfig{
+			Enabled: true,
 		},
 	}
 
-	app := newTestApplication(t, withRedis)
-	mux := app.mount()
+	setupTestApplication(t, withRedis)
+	mux := api.Mount()
 
-	testToken, err := app.authenticator.GenerateToken(nil)
+	testToken, err := app.Authenticator.GenerateToken(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +38,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("should allow authenticated requests", func(t *testing.T) {
-		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+		mockCacheStore := app.CacheStorage.Users.(*cache.MockUserStore)
 
 		mockCacheStore.On("Get", int64(1)).Return(nil, nil).Twice()
 		mockCacheStore.On("Set", mock.Anything).Return(nil)
@@ -54,8 +57,8 @@ func TestGetUser(t *testing.T) {
 		mockCacheStore.Calls = nil // Reset mock expectations
 	})
 
-	t.Run("should hit the cache first and if not exists it sets the user on the cache", func(t *testing.T) {
-		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+	t.Run("should hit the cache first and if not exists it sets the User on the cache", func(t *testing.T) {
+		mockCacheStore := app.CacheStorage.Users.(*cache.MockUserStore)
 
 		mockCacheStore.On("Get", int64(42)).Return(nil, nil)
 		mockCacheStore.On("Get", int64(1)).Return(nil, nil)
@@ -78,16 +81,16 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("should NOT hit the cache if it is not enabled", func(t *testing.T) {
-		withRedis := config{
-			redisCfg: redisConfig{
-				enabled: false,
+		withRedis := config.Config{
+			RedisCfg: config.RedisConfig{
+				Enabled: false,
 			},
 		}
 
-		app := newTestApplication(t, withRedis)
-		mux := app.mount()
+		setupTestApplication(t, withRedis)
+		mux := api.Mount()
 
-		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+		mockCacheStore := app.CacheStorage.Users.(*cache.MockUserStore)
 
 		req, err := http.NewRequest(http.MethodGet, "/v1/users/1", nil)
 		if err != nil {

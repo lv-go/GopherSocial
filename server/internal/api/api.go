@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -14,6 +14,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/sikozonpc/social/internal/app"
+	auth2 "github.com/sikozonpc/social/internal/auth/auth"
+	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/internal/handlers"
+	middleware2 "github.com/sikozonpc/social/internal/ratelimiter/middleware"
 	"go.uber.org/zap"
 
 	"github.com/sikozonpc/social/docs" // This is required to generate swagger docs
@@ -26,74 +31,17 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-type application struct {
-	config        config
-	store         store.Storage
-	cacheStorage  cache.Storage
-	logger        *zap.SugaredLogger
-	mailer        mailer.Client
-	authenticator auth.Authenticator
-	rateLimiter   ratelimiter.Limiter
+type Application struct {
+	Config        config.Config
+	Store         store.Storage
+	CacheStorage  cache.Storage
+	Logger        *zap.SugaredLogger
+	Mailer        mailer.Client
+	Authenticator auth.Authenticator
+	RateLimiter   ratelimiter.Limiter
 }
 
-type config struct {
-	addr        string
-	db          dbConfig
-	env         string
-	apiURL      string
-	mail        mailConfig
-	frontendURL string
-	auth        authConfig
-	redisCfg    redisConfig
-	rateLimiter ratelimiter.Config
-}
-
-type redisConfig struct {
-	addr    string
-	pw      string
-	db      int
-	enabled bool
-}
-
-type authConfig struct {
-	basic basicConfig
-	token tokenConfig
-}
-
-type tokenConfig struct {
-	secret string
-	exp    time.Duration
-	iss    string
-}
-
-type basicConfig struct {
-	user string
-	pass string
-}
-
-type mailConfig struct {
-	sendGrid  sendGridConfig
-	mailTrap  mailTrapConfig
-	fromEmail string
-	exp       time.Duration
-}
-
-type mailTrapConfig struct {
-	apiKey string
-}
-
-type sendGridConfig struct {
-	apiKey string
-}
-
-type dbConfig struct {
-	addr         string
-	maxOpenConns int
-	maxIdleConns int
-	maxIdleTime  string
-}
-
-func (app *application) mount() http.Handler {
+func Mount() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -109,8 +57,8 @@ func (app *application) mount() http.Handler {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	if app.config.rateLimiter.Enabled {
-		r.Use(app.RateLimiterMiddleware)
+	if app.Config.RateLimiter.Enabled {
+		r.Use(middleware2.RateLimiterMiddleware)
 	}
 
 	// Set a timeout value on the request context (ctx), that will signal
@@ -120,60 +68,60 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		// Operations
-		r.Get("/health", app.healthCheckHandler)
-		r.With(app.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
+		r.Get("/health", handlers.HealthCheckHandler)
+		r.With(auth2.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
-		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.Config.Addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Route("/posts", func(r chi.Router) {
-			r.Use(app.AuthTokenMiddleware)
-			r.Post("/", app.createPostHandler)
+			r.Use(auth2.AuthTokenMiddleware)
+			r.Post("/", handlers.CreatePostHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
-				r.Use(app.postsContextMiddleware)
-				r.Get("/", app.getPostHandler)
+				r.Use(handlers.PostsContextMiddleware)
+				r.Get("/", handlers.GetPostHandler)
 
-				r.Patch("/", app.checkPostOwnership("moderator", app.updatePostHandler))
-				r.Delete("/", app.checkPostOwnership("admin", app.deletePostHandler))
+				r.Patch("/", handlers.CheckPostOwnership("moderator", handlers.UpdatePostHandler))
+				r.Delete("/", handlers.CheckPostOwnership("admin", handlers.DeletePostHandler))
 			})
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Put("/activate/{token}", app.activateUserHandler)
+			r.Put("/activate/{token}", handlers.ActivateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				r.Use(app.AuthTokenMiddleware)
+				r.Use(auth2.AuthTokenMiddleware)
 
-				r.Get("/", app.getUserHandler)
-				r.Put("/follow", app.followUserHandler)
-				r.Put("/unfollow", app.unfollowUserHandler)
+				r.Get("/", handlers.GetUserHandler)
+				r.Put("/follow", handlers.FollowUserHandler)
+				r.Put("/unfollow", handlers.UnfollowUserHandler)
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(app.AuthTokenMiddleware)
-				r.Get("/feed", app.getUserFeedHandler)
+				r.Use(auth2.AuthTokenMiddleware)
+				r.Get("/feed", handlers.GetUserFeedHandler)
 			})
 		})
 
 		// Public routes
 		r.Route("/authentication", func(r chi.Router) {
-			r.Post("/user", app.registerUserHandler)
-			r.Post("/token", app.createTokenHandler)
+			r.Post("/User", auth2.RegisterUserHandler)
+			r.Post("/token", auth2.CreateTokenHandler)
 		})
 	})
 
 	return r
 }
 
-func (app *application) run(mux http.Handler) error {
+func Run(mux http.Handler) error {
 	// Docs
-	docs.SwaggerInfo.Version = version
-	docs.SwaggerInfo.Host = app.config.apiURL
+	docs.SwaggerInfo.Version = app.Config.Version
+	docs.SwaggerInfo.Host = app.Config.ApiURL
 	docs.SwaggerInfo.BasePath = "/v1"
 
 	srv := &http.Server{
-		Addr:         app.config.addr,
+		Addr:         app.Config.Addr,
 		Handler:      mux,
 		WriteTimeout: time.Second * 30,
 		ReadTimeout:  time.Second * 10,
@@ -191,12 +139,12 @@ func (app *application) run(mux http.Handler) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		app.logger.Infow("signal caught", "signal", s.String())
+		app.Logger.Infow("signal caught", "signal", s.String())
 
 		shutdown <- srv.Shutdown(ctx)
 	}()
 
-	app.logger.Infow("server has started", "addr", app.config.addr, "env", app.config.env)
+	app.Logger.Infow("server has started", "addr", app.Config.Addr, "env", app.Config.Env)
 
 	err := srv.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
@@ -208,7 +156,7 @@ func (app *application) run(mux http.Handler) error {
 		return err
 	}
 
-	app.logger.Infow("server has stopped", "addr", app.config.addr, "env", app.config.env)
+	app.Logger.Infow("server has stopped", "addr", app.Config.Addr, "env", app.Config.Env)
 
 	return nil
 }

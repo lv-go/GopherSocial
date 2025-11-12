@@ -1,0 +1,100 @@
+package config
+
+import (
+	"log"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/spf13/viper"
+)
+
+type Config struct {
+	Addr        string
+	Db          dbConfig
+	Env         string
+	Version     string
+	ApiURL      string
+	Mail        mailConfig
+	FrontendURL string
+	Auth        authConfig
+	RedisCfg    RedisConfig
+	RateLimiter ratelimiter.Config
+}
+
+type RedisConfig struct {
+	Addr    string
+	Pw      string
+	Db      int
+	Enabled bool
+}
+
+type authConfig struct {
+	Basic basicConfig
+	Token tokenConfig
+}
+
+type tokenConfig struct {
+	Secret string
+	Exp    time.Duration
+	Iss    string
+}
+
+type basicConfig struct {
+	User string
+	Pass string
+}
+
+type mailConfig struct {
+	SendGrid  sendGridConfig
+	MailTrap  mailTrapConfig
+	FromEmail string
+	Exp       time.Duration
+}
+
+type mailTrapConfig struct {
+	ApiKey string
+}
+
+type sendGridConfig struct {
+	ApiKey string
+}
+
+type dbConfig struct {
+	Addr         string
+	MaxOpenConns int
+	MaxIdleConns int
+	MaxIdleTime  string
+}
+
+var AppConfig Config
+
+func Setup() {
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv != "" {
+		appEnv = "." + appEnv
+	}
+	if appEnv == "" || appEnv == "dev" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+		viper.WithLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	}
+
+	// Set the name of the config file (without extension)
+	viper.SetConfigName("config" + appEnv)
+	// Set the type of the config file
+	viper.SetConfigType("yaml")
+	// Add the path where Viper should look for the config file
+	viper.AddConfigPath(".")
+
+	// Read the config file
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file: %s", err)
+	}
+
+	// Unmarshal the config into the config struct
+	if err := viper.Unmarshal(&AppConfig); err != nil {
+		log.Fatalf("Unable to decode into struct: %v", err)
+	}
+	slog.Debug("config loaded", "config", AppConfig)
+}
