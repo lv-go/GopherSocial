@@ -1,16 +1,20 @@
 package app
 
 import (
+	"context"
 	"expvar"
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/db"
+	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/store"
@@ -20,16 +24,40 @@ import (
 )
 
 var (
-	Config        config.Config
-	Store         store.Storage
-	CacheStorage  cache.Storage
-	Logger        *zap.SugaredLogger
-	Mailer        mailer.Client
-	Authenticator auth.Authenticator
-	RateLimiter   ratelimiter.Limiter
+	Config                 config.Config
+	Store                  store.Storage
+	CacheStorage           cache.Storage
+	Logger                 *zap.SugaredLogger
+	Mailer                 mailer.Client
+	Authenticator          auth.Authenticator
+	AuthHandlers           auth.Handlers
+	AuthMiddlewares        auth.Middlewares
+	RateLimiter            ratelimiter.RateLimiter
+	UsersHandlers          handlers.UsersHandlers
+	PostsHandlers          handlers.PostsHandlers
+	HealthCheckHandlers    handlers.HealthCheckHandler
+	FeedHandlers           handlers.FeedsHandlers
+	RateLimiterMiddlewares ratelimiter.Middlewares
 )
 
-func Setup() {
+type Application struct {
+	Config                 *config.Config
+	Store                  *store.Storage
+	CacheStorage           *cache.Storage
+	Logger                 *zap.SugaredLogger
+	Mailer                 *mailer.Client
+	Authenticator          *auth.Authenticator
+	AuthHandlers           *auth.Handlers
+	AuthMiddlewares        *auth.Middlewares
+	RateLimiter            *ratelimiter.RateLimiter
+	UsersHandlers          *handlers.UsersHandlers
+	PostsHandlers          *handlers.PostsHandlers
+	HealthCheckHandlers    *handlers.HealthCheckHandler
+	FeedHandlers           *handlers.FeedsHandlers
+	RateLimiterMiddlewares *ratelimiter.Middlewares
+}
+
+func Setup() func() {
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv != "" {
 		appEnv = "." + appEnv
@@ -72,7 +100,16 @@ func Setup() {
 		Logger.Fatal(err)
 	}
 
-	defer _db.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-ctx.Done()
+		Logger.Info("closing database connection pool")
+		err := _db.Close()
+		if err != nil {
+			Logger.Error(err)
+		}
+	}()
 	Logger.Info("database connection pool established")
 
 	// Cache
@@ -81,7 +118,13 @@ func Setup() {
 		rdb = cache.NewRedisClient(Config.RedisCfg.Addr, Config.RedisCfg.Pw, Config.RedisCfg.Db)
 		Logger.Info("redis cache connection established")
 
-		defer rdb.Close()
+		go func() {
+			<-ctx.Done()
+			Logger.Info("closing redis cache connection")
+			if err := rdb.Close(); err != nil {
+				Logger.Error("error closing redis cache connection", "error", err)
+			}
+		}()
 	}
 
 	// Rate limiter
@@ -107,6 +150,29 @@ func Setup() {
 	Store = store.NewStorage(_db)
 	CacheStorage = cache.NewRedisStorage(rdb)
 
+	RateLimiterMiddlewares = ratelimiter.NewMiddlewares(Config.RateLimiter, RateLimiter)
+	// Handlers
+	AuthHandlers = auth.NewHandlers(
+		Store,
+		Mailer,
+		Logger,
+		Config,
+		Authenticator,
+	)
+	AuthMiddlewares = auth.NewMiddlewares(
+		Store,
+		CacheStorage,
+		RateLimiter,
+		Authenticator,
+		Logger,
+		Config,
+	)
+
+	HealthCheckHandlers = handlers.NewHealthCheckHandler(Config)
+	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, Store)
+	PostsHandlers = handlers.NewPostsHandlers(Store, CacheStorage)
+	FeedHandlers = handlers.NewFeedHandlers(Store)
+
 	// Metrics collected
 	expvar.NewString("version").Set(Config.Version)
 	expvar.Publish("database", expvar.Func(func() any {
@@ -116,4 +182,13 @@ func Setup() {
 		return runtime.NumGoroutine()
 	}))
 
+	return func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-quit
+
+		Logger.Info("shutting down server", "signal", s.String())
+
+		cancel()
+	}
 }

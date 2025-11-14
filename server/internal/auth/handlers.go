@@ -9,10 +9,11 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
+	"go.uber.org/zap"
 )
 
 type RegisterUserPayload struct {
@@ -24,6 +25,30 @@ type RegisterUserPayload struct {
 type UserWithToken struct {
 	*store.User
 	Token string `json:"token"`
+}
+
+type Handlers struct {
+	store         store.Storage
+	mailer        mailer.Client
+	logger        *zap.SugaredLogger
+	config        config.Config
+	authenticator Authenticator
+}
+
+func NewHandlers(
+	store store.Storage,
+	mailer mailer.Client,
+	logger *zap.SugaredLogger,
+	config config.Config,
+	authenticator Authenticator,
+) Handlers {
+	return Handlers{
+		store:         store,
+		mailer:        mailer,
+		logger:        logger,
+		config:        config,
+		authenticator: authenticator,
+	}
 }
 
 // RegisterUserHandler godoc
@@ -38,7 +63,7 @@ type UserWithToken struct {
 //	@Failure		400		{object}	error
 //	@Failure		500		{object}	error
 //	@Router			/authentication/User [post]
-func RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	var payload RegisterUserPayload
 	if err := utils.ReadJSON(w, r, &payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
@@ -72,7 +97,7 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte(plainToken))
 	hashToken := hex.EncodeToString(hash[:])
 
-	err := app.Store.Users.CreateAndInvite(ctx, user, hashToken, app.Config.Mail.Exp)
+	err := h.store.Users.CreateAndInvite(ctx, user, hashToken, h.config.Mail.Exp)
 	if err != nil {
 		switch err {
 		case store.ErrDuplicateEmail:
@@ -89,9 +114,9 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 		User:  user,
 		Token: plainToken,
 	}
-	activationURL := fmt.Sprintf("%s/confirm/%s", app.Config.FrontendURL, plainToken)
+	activationURL := fmt.Sprintf("%s/confirm/%s", h.config.FrontendURL, plainToken)
 
-	isProdEnv := app.Config.Env == "production"
+	isProdEnv := h.config.Env == "production"
 	vars := struct {
 		Username      string
 		ActivationURL string
@@ -101,20 +126,20 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send mail
-	status, err := app.Mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	status, err := h.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
 	if err != nil {
-		app.Logger.Errorw("error sending welcome email", "error", err)
+		h.logger.Errorw("error sending welcome email", "error", err)
 
 		// rollback User creation if email fails (SAGA pattern)
-		if err := app.Store.Users.Delete(ctx, user.ID); err != nil {
-			app.Logger.Errorw("error deleting User", "error", err)
+		if err := h.store.Users.Delete(ctx, user.ID); err != nil {
+			h.logger.Errorw("error deleting User", "error", err)
 		}
 
 		utils.InternalServerError(w, r, err)
 		return
 	}
 
-	app.Logger.Infow("Email sent", "status code", status)
+	h.logger.Infow("Email sent", "status code", status)
 
 	utils.WriteJSON(w, http.StatusCreated, userWithToken)
 }
@@ -137,7 +162,7 @@ type CreateUserTokenPayload struct {
 //	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
 //	@Router			/authentication/token [post]
-func CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateUserTokenPayload
 	if err := utils.ReadJSON(w, r, &payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
@@ -149,7 +174,7 @@ func CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.Store.Users.GetByEmail(r.Context(), payload.Email)
+	user, err := h.store.Users.GetByEmail(r.Context(), payload.Email)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
@@ -167,14 +192,14 @@ func CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	claims := jwt.MapClaims{
 		"sub": user.ID,
-		"exp": time.Now().Add(app.Config.Auth.Token.Exp).Unix(),
+		"exp": time.Now().Add(h.config.Auth.Token.Exp).Unix(),
 		"iat": time.Now().Unix(),
 		"nbf": time.Now().Unix(),
-		"iss": app.Config.Auth.Token.Iss,
-		"aud": app.Config.Auth.Token.Iss,
+		"iss": h.config.Auth.Token.Iss,
+		"aud": h.config.Auth.Token.Iss,
 	}
 
-	token, err := app.Authenticator.GenerateToken(claims)
+	token, err := h.authenticator.GenerateToken(claims)
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return

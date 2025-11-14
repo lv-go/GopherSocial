@@ -2,7 +2,7 @@ package ratelimiter
 
 import "time"
 
-type Limiter interface {
+type RateLimiter interface {
 	Allow(ip string) (bool, time.Duration)
 }
 

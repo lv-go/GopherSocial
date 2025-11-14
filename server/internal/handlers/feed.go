@@ -3,11 +3,18 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/sikozonpc/social/internal/app"
-	"github.com/sikozonpc/social/internal/auth/auth"
+	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 )
+
+type FeedsHandlers struct {
+	store store.Storage
+}
+
+func NewFeedHandlers(store store.Storage) FeedsHandlers {
+	return FeedsHandlers{store: store}
+}
 
 // GetUserFeedHandler godoc
 //
@@ -28,7 +35,7 @@ import (
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/feed [get]
-func GetUserFeedHandler(w http.ResponseWriter, r *http.Request) {
+func (fh *FeedsHandlers) GetUserFeedHandler(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
 		Limit:  20,
 		Offset: 0,
@@ -51,7 +58,7 @@ func GetUserFeedHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.GetUserFromContext(r)
 
-	feed, err := app.Store.Posts.GetUserFeed(ctx, user.ID, fq)
+	feed, err := fh.store.Posts.GetUserFeed(ctx, user.ID, fq)
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return

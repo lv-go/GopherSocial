@@ -3,9 +3,19 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/utils"
 )
+
+type HealthCheckHandler struct {
+	config config.Config
+}
+
+func NewHealthCheckHandler(config config.Config) HealthCheckHandler {
+	return HealthCheckHandler{
+		config: config,
+	}
+}
 
 // HealthCheckHandler godoc
 //
@@ -15,11 +25,11 @@ import (
 //	@Produce		json
 //	@Success		200	{object}	string	"ok"
 //	@Router			/health [get]
-func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (h *HealthCheckHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]string{
 		"status":  "ok",
-		"env":     app.Config.Env,
-		"version": app.Config.Version,
+		"env":     h.config.Env,
+		"version": h.config.Version,
 	}
 
 	utils.WriteJSON(w, http.StatusOK, data)

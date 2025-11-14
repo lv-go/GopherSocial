@@ -9,12 +9,42 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/store"
+	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/sikozonpc/social/internal/utils"
+	"go.uber.org/zap"
 )
 
-func AuthTokenMiddleware(next http.Handler) http.Handler {
+type Middlewares struct {
+	store         store.Storage
+	cacheStorage  cache.Storage
+	rateLimiter   ratelimiter.RateLimiter
+	authenticator Authenticator
+	logger        *zap.SugaredLogger
+	config        config.Config
+}
+
+func NewMiddlewares(
+	store store.Storage,
+	cacheStorage cache.Storage,
+	rateLimiter ratelimiter.RateLimiter,
+	authenticator Authenticator,
+	logger *zap.SugaredLogger,
+	config config.Config,
+) Middlewares {
+	return Middlewares{
+		store:         store,
+		cacheStorage:  cacheStorage,
+		rateLimiter:   rateLimiter,
+		authenticator: authenticator,
+		logger:        logger,
+		config:        config,
+	}
+}
+
+func (m *Middlewares) AuthTokenMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -29,7 +59,7 @@ func AuthTokenMiddleware(next http.Handler) http.Handler {
 		}
 
 		token := parts[1]
-		jwtToken, err := app.Authenticator.ValidateToken(token)
+		jwtToken, err := m.authenticator.ValidateToken(token)
 		if err != nil {
 			utils.UnauthorizedErrorResponse(w, r, err)
 			return
@@ -45,18 +75,18 @@ func AuthTokenMiddleware(next http.Handler) http.Handler {
 
 		ctx := r.Context()
 
-		user, err := GetUser(ctx, userID)
+		user, err := m.GetUser(ctx, userID)
 		if err != nil {
 			utils.UnauthorizedErrorResponse(w, r, err)
 			return
 		}
 
-		ctx = context.WithValue(ctx, userCtx, user)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		r = SetUserInContext(r, user)
+		next.ServeHTTP(w, r)
 	})
 }
 
-func BasicAuthMiddleware() func(http.Handler) http.Handler {
+func (m *Middlewares) BasicAuthMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// read the auth header
@@ -81,8 +111,8 @@ func BasicAuthMiddleware() func(http.Handler) http.Handler {
 			}
 
 			// check the credentials
-			username := app.Config.Auth.Basic.User
-			pass := app.Config.Auth.Basic.Pass
+			username := m.config.Auth.Basic.User
+			pass := m.config.Auth.Basic.Pass
 
 			creds := strings.SplitN(string(decoded), ":", 2)
 			if len(creds) != 2 || creds[0] != username || creds[1] != pass {
@@ -95,23 +125,23 @@ func BasicAuthMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-func GetUser(ctx context.Context, userID int64) (*store.User, error) {
-	if !app.Config.RedisCfg.Enabled {
-		return app.Store.Users.GetByID(ctx, userID)
+func (m *Middlewares) GetUser(ctx context.Context, userID int64) (*store.User, error) {
+	if !m.config.RedisCfg.Enabled {
+		return m.store.Users.GetByID(ctx, userID)
 	}
 
-	user, err := app.CacheStorage.Users.Get(ctx, userID)
+	user, err := m.cacheStorage.Users.Get(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	if user == nil {
-		user, err = app.Store.Users.GetByID(ctx, userID)
+		user, err = m.store.Users.GetByID(ctx, userID)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := app.CacheStorage.Users.Set(ctx, user); err != nil {
+		if err := m.cacheStorage.Users.Set(ctx, user); err != nil {
 			return nil, err
 		}
 	}
@@ -119,10 +149,10 @@ func GetUser(ctx context.Context, userID int64) (*store.User, error) {
 	return user, nil
 }
 
-func RateLimiterMiddleware(next http.Handler) http.Handler {
+func (m *Middlewares) RateLimiterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if app.Config.RateLimiter.Enabled {
-			if allow, retryAfter := app.RateLimiter.Allow(r.RemoteAddr); !allow {
+		if m.config.RateLimiter.Enabled {
+			if allow, retryAfter := m.rateLimiter.Allow(r.RemoteAddr); !allow {
 				utils.RateLimitExceededResponse(w, r, retryAfter.String())
 				return
 			}

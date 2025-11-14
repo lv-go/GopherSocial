@@ -8,6 +8,7 @@ import (
 	"github.com/sikozonpc/social/internal/app"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
@@ -32,6 +33,25 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	)
 
 	app.Config = cfg
+
+	app.RateLimiterMiddlewares = ratelimiter.NewMiddlewares(cfg.RateLimiter, app.RateLimiter)
+
+	app.AuthMiddlewares = auth.NewMiddlewares(
+		app.Store,
+		app.CacheStorage,
+		app.RateLimiter,
+		app.Authenticator,
+		app.Logger,
+		app.Config,
+	)
+	app.AuthHandlers = auth.NewHandlers(
+		app.Store,
+		app.Mailer,
+		app.Logger,
+		app.Config,
+		app.Authenticator,
+	)
+	app.UsersHandlers = handlers.NewUsersHandlers(app.AuthMiddlewares, app.Store)
 }
 
 func executeRequest(req *http.Request, mux http.Handler) *httptest.ResponseRecorder {

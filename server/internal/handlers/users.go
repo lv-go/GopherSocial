@@ -5,11 +5,25 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sikozonpc/social/internal/app"
-	"github.com/sikozonpc/social/internal/auth/auth"
+	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 )
+
+type UsersHandlers struct {
+	authMiddlewares auth.Middlewares
+	store           store.Storage
+}
+
+func NewUsersHandlers(
+	authMiddlewares auth.Middlewares,
+	store store.Storage,
+) UsersHandlers {
+	return UsersHandlers{
+		authMiddlewares: authMiddlewares,
+		store:           store,
+	}
+}
 
 // GetUserHandler godoc
 //
@@ -25,14 +39,14 @@ import (
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/{id} [get]
-func GetUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	user, err := auth.GetUser(r.Context(), userID)
+	user, err := h.authMiddlewares.GetUser(r.Context(), userID)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
@@ -60,7 +74,7 @@ func GetUserHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404		{object}	error	"User not found"
 //	@Security		ApiKeyAuth
 //	@Router			/users/{userID}/follow [put]
-func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
 	followedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
@@ -71,7 +85,7 @@ func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	if err := app.Store.Followers.Follow(ctx, followedID, followerUser.ID); err != nil {
+	if err := h.store.Followers.Follow(ctx, followedID, followerUser.ID); err != nil {
 		switch err {
 		case store.ErrConflict:
 			utils.ConflictResponse(w, r, err)
@@ -98,7 +112,7 @@ func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404		{object}	error	"User not found"
 //	@Security		ApiKeyAuth
 //	@Router			/users/{userID}/unfollow [put]
-func UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
 	unfollowedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
@@ -108,7 +122,7 @@ func UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	if err := app.Store.Followers.Unfollow(ctx, followerUser.ID, unfollowedID); err != nil {
+	if err := h.store.Followers.Unfollow(ctx, followerUser.ID, unfollowedID); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
 	}
@@ -128,10 +142,10 @@ func UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/activate/{token} [put]
-func ActivateUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandlers) ActivateUserHandler(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 
-	err := app.Store.Users.Activate(r.Context(), token)
+	err := h.store.Users.Activate(r.Context(), token)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:

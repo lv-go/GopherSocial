@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/sikozonpc/social/internal/api"
 	app "github.com/sikozonpc/social/internal/app"
 )
@@ -25,9 +27,13 @@ const version = "1.1.0"
 // @name						Authorization
 // @description
 func main() {
-	app.Setup()
+	shutdown := app.Setup()
+	defer shutdown()
 
 	mux := api.Mount()
 
 	app.Logger.Fatal(api.Run(mux))
+
+	// wait 1 second
+	time.Sleep(1 * time.Second)
 }

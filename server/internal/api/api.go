@@ -14,32 +14,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/sikozonpc/social/internal/app"
-	auth2 "github.com/sikozonpc/social/internal/auth/auth"
-	"github.com/sikozonpc/social/internal/config"
-	"github.com/sikozonpc/social/internal/handlers"
-	middleware2 "github.com/sikozonpc/social/internal/ratelimiter/middleware"
-	"go.uber.org/zap"
-
 	"github.com/sikozonpc/social/docs" // This is required to generate swagger docs
-	"github.com/sikozonpc/social/internal/auth"
+	"github.com/sikozonpc/social/internal/app"
 	"github.com/sikozonpc/social/internal/env"
-	"github.com/sikozonpc/social/internal/mailer"
-	"github.com/sikozonpc/social/internal/ratelimiter"
-	"github.com/sikozonpc/social/internal/store"
-	"github.com/sikozonpc/social/internal/store/cache"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
-
-type Application struct {
-	Config        config.Config
-	Store         store.Storage
-	CacheStorage  cache.Storage
-	Logger        *zap.SugaredLogger
-	Mailer        mailer.Client
-	Authenticator auth.Authenticator
-	RateLimiter   ratelimiter.Limiter
-}
 
 func Mount() http.Handler {
 	r := chi.NewRouter()
@@ -58,7 +37,7 @@ func Mount() http.Handler {
 	}))
 
 	if app.Config.RateLimiter.Enabled {
-		r.Use(middleware2.RateLimiterMiddleware)
+		r.Use(app.RateLimiterMiddlewares.RateLimiterMiddleware)
 	}
 
 	// Set a timeout value on the request context (ctx), that will signal
@@ -68,46 +47,46 @@ func Mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		// Operations
-		r.Get("/health", handlers.HealthCheckHandler)
-		r.With(auth2.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
+		r.Get("/health", app.HealthCheckHandlers.HealthCheckHandler)
+		r.With(app.AuthMiddlewares.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.Config.Addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Route("/posts", func(r chi.Router) {
-			r.Use(auth2.AuthTokenMiddleware)
-			r.Post("/", handlers.CreatePostHandler)
+			r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
+			r.Post("/", app.PostsHandlers.CreatePostHandler)
 
 			r.Route("/{postID}", func(r chi.Router) {
-				r.Use(handlers.PostsContextMiddleware)
-				r.Get("/", handlers.GetPostHandler)
+				r.Use(app.PostsHandlers.PostsContextMiddleware)
+				r.Get("/", app.PostsHandlers.GetPostHandler)
 
-				r.Patch("/", handlers.CheckPostOwnership("moderator", handlers.UpdatePostHandler))
-				r.Delete("/", handlers.CheckPostOwnership("admin", handlers.DeletePostHandler))
+				r.Patch("/", app.PostsHandlers.CheckPostOwnership("moderator", app.PostsHandlers.UpdatePostHandler))
+				r.Delete("/", app.PostsHandlers.CheckPostOwnership("admin", app.PostsHandlers.DeletePostHandler))
 			})
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Put("/activate/{token}", handlers.ActivateUserHandler)
+			r.Put("/activate/{token}", app.UsersHandlers.ActivateUserHandler)
 
 			r.Route("/{userID}", func(r chi.Router) {
-				r.Use(auth2.AuthTokenMiddleware)
+				r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
 
-				r.Get("/", handlers.GetUserHandler)
-				r.Put("/follow", handlers.FollowUserHandler)
-				r.Put("/unfollow", handlers.UnfollowUserHandler)
+				r.Get("/", app.UsersHandlers.GetUserHandler)
+				r.Put("/follow", app.UsersHandlers.FollowUserHandler)
+				r.Put("/unfollow", app.UsersHandlers.UnfollowUserHandler)
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(auth2.AuthTokenMiddleware)
-				r.Get("/feed", handlers.GetUserFeedHandler)
+				r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
+				r.Get("/feed", app.FeedHandlers.GetUserFeedHandler)
 			})
 		})
 
 		// Public routes
 		r.Route("/authentication", func(r chi.Router) {
-			r.Post("/User", auth2.RegisterUserHandler)
-			r.Post("/token", auth2.CreateTokenHandler)
+			r.Post("/User", app.AuthHandlers.RegisterUserHandler)
+			r.Post("/token", app.AuthHandlers.CreateTokenHandler)
 		})
 	})
 
