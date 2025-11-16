@@ -3,12 +3,7 @@ package app
 import (
 	"context"
 	"expvar"
-	"log"
-	"log/slog"
-	"os"
-	"os/signal"
 	"runtime"
-	"syscall"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/sikozonpc/social/internal/auth"
@@ -19,7 +14,6 @@ import (
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -57,33 +51,8 @@ type Application struct {
 	RateLimiterMiddlewares *ratelimiter.Middlewares
 }
 
-func Setup() func() {
-	appEnv := os.Getenv("APP_ENV")
-	if appEnv != "" {
-		appEnv = "." + appEnv
-	}
-	if appEnv == "" || appEnv == "dev" {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-		viper.WithLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	}
-
-	// Set the name of the config file (without extension)
-	viper.SetConfigName("config" + appEnv)
-	// Set the type of the config file
-	viper.SetConfigType("yaml")
-	// Add the path where Viper should look for the config file
-	viper.AddConfigPath(".")
-
-	// Read the config file
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file: %s", err)
-	}
-
-	// Unmarshal the config into the config struct
-	if err := viper.Unmarshal(&Config); err != nil {
-		log.Fatalf("Unable to decode into struct: %v", err)
-	}
-	slog.Debug("config loaded", "config", Config)
+func Setup(ctx context.Context) {
+	Config = config.Setup()
 
 	// Logger
 	Logger = zap.Must(zap.NewProduction()).Sugar()
@@ -99,8 +68,6 @@ func Setup() func() {
 	if err != nil {
 		Logger.Fatal(err)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
 		<-ctx.Done()
@@ -181,14 +148,4 @@ func Setup() func() {
 	expvar.Publish("goroutines", expvar.Func(func() any {
 		return runtime.NumGoroutine()
 	}))
-
-	return func() {
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-		s := <-quit
-
-		Logger.Info("shutting down server", "signal", s.String())
-
-		cancel()
-	}
 }

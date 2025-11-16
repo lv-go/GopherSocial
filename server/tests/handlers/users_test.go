@@ -7,13 +7,14 @@ import (
 	"github.com/sikozonpc/social/internal/api"
 	"github.com/sikozonpc/social/internal/app"
 	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestGetUser(t *testing.T) {
 	withRedis := config.Config{
-		RedisCfg: config.RedisConfig{
+		RedisCfg: repositories.RedisConfig{
 			Enabled: true,
 		},
 	}
@@ -82,7 +83,7 @@ func TestGetUser(t *testing.T) {
 
 	t.Run("should NOT hit the cache if it is not enabled", func(t *testing.T) {
 		withRedis := config.Config{
-			RedisCfg: config.RedisConfig{
+			RedisCfg: repositories.RedisConfig{
 				Enabled: false,
 			},
 		}

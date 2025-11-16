@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/joho/godotenv"
+	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
 	"gorm.io/gorm"
@@ -16,8 +17,8 @@ func init() {
 		panic(err)
 	}
 
-	repositories.SetupDB()
-
+	cfg := config.Setup()
+	repositories.SetupGormDB(cfg.GormDBConfig)
 }
 
 func InitTestUser() *models.User {

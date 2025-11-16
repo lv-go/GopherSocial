@@ -1,7 +1,10 @@
 package main
 
 import (
-	"time"
+	"context"
+	"log/slog"
+	"os/signal"
+	"syscall"
 
 	"github.com/sikozonpc/social/internal/api"
 	app "github.com/sikozonpc/social/internal/app"
@@ -27,13 +30,12 @@ const version = "1.1.0"
 // @name						Authorization
 // @description
 func main() {
-	shutdown := app.Setup()
-	defer shutdown()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	app.Setup(ctx)
 
 	mux := api.Mount()
 
-	app.Logger.Fatal(api.Run(mux))
-
-	// wait 1 second
-	time.Sleep(1 * time.Second)
+	slog.Info("Shutting down server", "error", api.Run(mux))
 }

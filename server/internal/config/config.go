@@ -7,27 +7,22 @@ import (
 	"time"
 
 	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Addr        string
-	Db          dbConfig
-	Env         string
-	Version     string
-	ApiURL      string
-	Mail        mailConfig
-	FrontendURL string
-	Auth        authConfig
-	RedisCfg    RedisConfig
-	RateLimiter ratelimiter.Config
-}
-
-type RedisConfig struct {
-	Addr    string
-	Pw      string
-	Db      int
-	Enabled bool
+	Addr         string
+	Db           dbConfig
+	Env          string
+	Version      string
+	ApiURL       string
+	Mail         mailConfig
+	FrontendURL  string
+	Auth         authConfig
+	RedisCfg     repositories.RedisConfig
+	RateLimiter  ratelimiter.Config
+	GormDBConfig repositories.GormDBConfig
 }
 
 type authConfig struct {
@@ -68,9 +63,7 @@ type dbConfig struct {
 	MaxIdleTime  string
 }
 
-var AppConfig Config
-
-func Setup() {
+func Setup() Config {
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv != "" {
 		appEnv = "." + appEnv
@@ -92,9 +85,11 @@ func Setup() {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
+	var cfg Config
 	// Unmarshal the config into the config struct
-	if err := viper.Unmarshal(&AppConfig); err != nil {
+	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}
-	slog.Debug("config loaded", "config", AppConfig)
+	slog.Debug("config loaded", "config", cfg)
+	return cfg
 }

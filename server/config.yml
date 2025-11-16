@@ -11,7 +11,7 @@ redisCfg:
   addr:    "localhost:6379"
   pw:      ""
   db:      0
-  enabled: false
+  enabled: true
 mail:
   exp:       72h
   fromEmail: ""
