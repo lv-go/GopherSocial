@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/sikozonpc/social/internal/utils"
@@ -18,12 +18,13 @@ import (
 )
 
 type Middlewares struct {
-	store         store.Storage
-	cacheStorage  cache.Storage
-	rateLimiter   ratelimiter.RateLimiter
-	authenticator Authenticator
-	logger        *zap.SugaredLogger
-	config        config.Config
+	store           store.Storage
+	cacheStorage    cache.Storage
+	usersRepository repositories.UsersRepository
+	rateLimiter     ratelimiter.RateLimiter
+	authenticator   Authenticator
+	logger          *zap.SugaredLogger
+	config          config.Config
 }
 
 func NewMiddlewares(
@@ -67,7 +68,7 @@ func (m *Middlewares) AuthTokenMiddleware(next http.Handler) http.Handler {
 
 		claims, _ := jwtToken.Claims.(jwt.MapClaims)
 
-		userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
+		userID, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
 		if err != nil {
 			utils.UnauthorizedErrorResponse(w, r, err)
 			return
@@ -75,7 +76,7 @@ func (m *Middlewares) AuthTokenMiddleware(next http.Handler) http.Handler {
 
 		ctx := r.Context()
 
-		user, err := m.GetUser(ctx, userID)
+		user, err := m.usersRepository.GetByID(ctx, uint(userID))
 		if err != nil {
 			utils.UnauthorizedErrorResponse(w, r, err)
 			return
@@ -123,30 +124,6 @@ func (m *Middlewares) BasicAuthMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func (m *Middlewares) GetUser(ctx context.Context, userID int64) (*store.User, error) {
-	if !m.config.RedisCfg.Enabled {
-		return m.store.Users.GetByID(ctx, userID)
-	}
-
-	user, err := m.cacheStorage.Users.Get(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if user == nil {
-		user, err = m.store.Users.GetByID(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := m.cacheStorage.Users.Set(ctx, user); err != nil {
-			return nil, err
-		}
-	}
-
-	return user, nil
 }
 
 func (m *Middlewares) RateLimiterMiddleware(next http.Handler) http.Handler {

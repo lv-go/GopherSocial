@@ -19,10 +19,11 @@ func init() {
 
 	cfg := config.Setup()
 	repositories.SetupGormDB(cfg.GormDBConfig)
+	repositories.SetupRedisDB(cfg.RedisCfg)
 }
 
 func InitTestUser() *models.User {
-	userRepository := repositories.NewGormCRUDRepository[models.User, uint]()
+	userRepository := repositories.NewUsersRepository()
 	testUser, err := userRepository.GetOne(context.Background(), models.User{Username: "testUser"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -46,7 +47,7 @@ func InitTestUser() *models.User {
 }
 
 func InitTestPost(testUser *models.User) *models.Post {
-	postRepository := repositories.NewGormCRUDRepository[models.Post, uint]()
+	postRepository := repositories.NewPostsRepository()
 	testPost, err := postRepository.GetOne(context.Background(), models.Post{Title: "Test Post"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

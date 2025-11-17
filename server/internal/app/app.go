@@ -12,6 +12,7 @@ import (
 	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"go.uber.org/zap"
@@ -32,6 +33,11 @@ var (
 	HealthCheckHandlers    handlers.HealthCheckHandler
 	FeedHandlers           handlers.FeedsHandlers
 	RateLimiterMiddlewares ratelimiter.Middlewares
+	UsersRepository        *repositories.UsersRepository
+	PostRepository         *repositories.PostsRepository
+	CommentsRepository     *repositories.CommentsRepository
+	FollowersRepository    *repositories.FollowersRepository
+	RolesRepository        *repositories.RolesRepository
 )
 
 type Application struct {
@@ -136,8 +142,8 @@ func Setup(ctx context.Context) {
 	)
 
 	HealthCheckHandlers = handlers.NewHealthCheckHandler(Config)
-	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, Store)
-	PostsHandlers = handlers.NewPostsHandlers(Store, CacheStorage)
+	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, UsersRepository, FollowersRepository)
+	PostsHandlers = handlers.NewPostsHandlers(UsersRepository, PostRepository, CommentsRepository, RolesRepository)
 	FeedHandlers = handlers.NewFeedHandlers(Store)
 
 	// Metrics collected

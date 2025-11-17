@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sikozonpc/social/internal/auth"
+	"github.com/sikozonpc/social/internal/models"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
-	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/sikozonpc/social/internal/utils"
 )
 
@@ -24,20 +26,27 @@ type CreatePostPayload struct {
 }
 
 type PostsHandlers struct {
-	store        store.Storage
-	cacheStorage cache.Storage
+	usersRepository    *repositories.UsersRepository
+	postsRepository    *repositories.PostsRepository
+	commentsRepository *repositories.CommentsRepository
+	rolesRepository    *repositories.RolesRepository
 }
 
 func NewPostsHandlers(
-	store store.Storage,
-	cacheStorage cache.Storage) PostsHandlers {
+	usersRepository *repositories.UsersRepository,
+	postsRepository *repositories.PostsRepository,
+	commentsRepository *repositories.CommentsRepository,
+	rolesRepository *repositories.RolesRepository,
+) PostsHandlers {
 	return PostsHandlers{
-		store:        store,
-		cacheStorage: cacheStorage,
+		usersRepository:    usersRepository,
+		postsRepository:    postsRepository,
+		commentsRepository: commentsRepository,
+		rolesRepository:    rolesRepository,
 	}
 }
 
-// CreatePost godoc
+// CreatePostHandler godoc
 //
 //	@Summary		Creates a post
 //	@Description	Creates a post
@@ -65,7 +74,7 @@ func (h *PostsHandlers) CreatePostHandler(w http.ResponseWriter, r *http.Request
 
 	user := auth.GetUserFromContext(r)
 
-	post := &store.Post{
+	post := &models.Post{
 		Title:   payload.Title,
 		Content: payload.Content,
 		Tags:    payload.Tags,
@@ -74,7 +83,7 @@ func (h *PostsHandlers) CreatePostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := h.store.Posts.Create(ctx, post); err != nil {
+	if err := h.postsRepository.Create(ctx, post); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
 	}
@@ -82,7 +91,7 @@ func (h *PostsHandlers) CreatePostHandler(w http.ResponseWriter, r *http.Request
 	utils.WriteJSON(w, http.StatusCreated, post)
 }
 
-// GetPost godoc
+// GetPostHandler godoc
 //
 //	@Summary		Fetches a post
 //	@Description	Fetches a post by ID
@@ -98,7 +107,7 @@ func (h *PostsHandlers) CreatePostHandler(w http.ResponseWriter, r *http.Request
 func (h *PostsHandlers) GetPostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 
-	comments, err := h.store.Comments.GetByPostID(r.Context(), post.ID)
+	comments, err := h.commentsRepository.GetByPostID(r.Context(), post.ID)
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return
@@ -109,7 +118,7 @@ func (h *PostsHandlers) GetPostHandler(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, post)
 }
 
-// DeletePost godoc
+// DeletePostHandler godoc
 //
 //	@Summary		Deletes a post
 //	@Description	Delete a post by ID
@@ -124,7 +133,7 @@ func (h *PostsHandlers) GetPostHandler(w http.ResponseWriter, r *http.Request) {
 //	@Router			/posts/{id} [delete]
 func (h *PostsHandlers) DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "postID")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return
@@ -132,7 +141,7 @@ func (h *PostsHandlers) DeletePostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := h.store.Posts.Delete(ctx, id); err != nil {
+	if err := h.postsRepository.DeleteByID(ctx, uint(id)); err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			utils.NotFoundResponse(w, r, err)
@@ -150,7 +159,7 @@ type UpdatePostPayload struct {
 	Content *string `json:"content" validate:"omitempty,max=1000"`
 }
 
-// UpdatePost godoc
+// UpdatePostHandler godoc
 //
 //	@Summary		Updates a post
 //	@Description	Updates a post by ID
@@ -167,6 +176,14 @@ type UpdatePostPayload struct {
 //	@Security		ApiKeyAuth
 //	@Router			/posts/{id} [patch]
 func (h *PostsHandlers) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	var id uint
+	err := json.Unmarshal([]byte(idStr), &id)
+	if err != nil {
+		utils.BadRequestResponse(w, r, err)
+		return
+	}
+
 	post := getPostFromCtx(r)
 
 	var payload UpdatePostPayload
@@ -189,7 +206,7 @@ func (h *PostsHandlers) UpdatePostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := h.updatePost(ctx, post); err != nil {
+	if err := h.postsRepository.UpdateByID(ctx, id, post); err != nil {
 		utils.InternalServerError(w, r, err)
 	}
 
@@ -199,7 +216,7 @@ func (h *PostsHandlers) UpdatePostHandler(w http.ResponseWriter, r *http.Request
 func (h *PostsHandlers) PostsContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "postID")
-		id, err := strconv.ParseInt(idParam, 10, 64)
+		id, err := strconv.ParseUint(idParam, 10, 64)
 		if err != nil {
 			utils.InternalServerError(w, r, err)
 			return
@@ -207,7 +224,7 @@ func (h *PostsHandlers) PostsContextMiddleware(next http.Handler) http.Handler {
 
 		ctx := r.Context()
 
-		post, err := h.store.Posts.GetByID(ctx, id)
+		post, err := h.postsRepository.GetByID(ctx, uint(id))
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
@@ -223,18 +240,17 @@ func (h *PostsHandlers) PostsContextMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func getPostFromCtx(r *http.Request) *store.Post {
-	post, _ := r.Context().Value(postCtx).(*store.Post)
+func getPostFromCtx(r *http.Request) *models.Post {
+	post, _ := r.Context().Value(postCtx).(*models.Post)
 	return post
 }
 
-func (h *PostsHandlers) updatePost(ctx context.Context, post *store.Post) error {
-	if err := h.store.Posts.Update(ctx, post); err != nil {
+func (h *PostsHandlers) updatePost(ctx context.Context, post *models.Post) error {
+	if err := h.postsRepository.UpdateByID(ctx, post.ID, post); err != nil {
 		return err
 	}
 
-	h.cacheStorage.Users.Delete(ctx, post.UserID)
-	return nil
+	return h.usersRepository.DeleteByID(ctx, post.UserID)
 }
 
 func (h *PostsHandlers) CheckPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {
@@ -262,8 +278,8 @@ func (h *PostsHandlers) CheckPostOwnership(requiredRole string, next http.Handle
 	})
 }
 
-func (h *PostsHandlers) checkRolePrecedence(ctx context.Context, user *store.User, roleName string) (bool, error) {
-	role, err := h.store.Roles.GetByName(ctx, roleName)
+func (h *PostsHandlers) checkRolePrecedence(ctx context.Context, user *models.User, roleName string) (bool, error) {
+	role, err := h.rolesRepository.GetByName(ctx, roleName)
 	if err != nil {
 		return false, err
 	}

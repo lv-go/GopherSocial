@@ -74,12 +74,12 @@ func (r *redisCRUDRepository[T, ID]) GetOne(ctx context.Context, filter interfac
 	return &entity, nil
 }
 
-func (r *redisCRUDRepository[T, ID]) GetAll(ctx context.Context, filter map[string]interface{}) ([]T, error) {
+func (r *redisCRUDRepository[T, ID]) GetAll(ctx context.Context, filter interface{}) ([]T, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (r *redisCRUDRepository[T, ID]) GetPage(ctx context.Context, filter map[string]interface{}, page int, pageSize int) (*Page[T], error) {
+func (r *redisCRUDRepository[T, ID]) GetPage(ctx context.Context, filter interface{}, pageQuery PageQuery) (*Page[T], error) {
 	//TODO implement me
 	panic("implement me")
 }

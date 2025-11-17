@@ -9,11 +9,11 @@ import (
 )
 
 type gormCRUDRepository[T interface{}, ID any] struct {
-	db gorm.DB
+	db *gorm.DB
 }
 
 func NewGormCRUDRepository[T interface{}, ID any]() CRUDRepository[T, ID] {
-	return &gormCRUDRepository[T, ID]{db: *gormDB}
+	return &gormCRUDRepository[T, ID]{db: gormDB}
 }
 
 func (g gormCRUDRepository[T, ID]) Create(ctx context.Context, entity *T) error {
@@ -39,7 +39,7 @@ func (g gormCRUDRepository[T, ID]) GetOne(ctx context.Context, filter interface{
 	return &entity, nil
 }
 
-func (g gormCRUDRepository[T, ID]) GetAll(ctx context.Context, filter map[string]interface{}) ([]T, error) {
+func (g gormCRUDRepository[T, ID]) GetAll(ctx context.Context, filter interface{}) ([]T, error) {
 	entities := make([]T, 0)
 	result := g.db.WithContext(ctx).Where(filter).Find(&entities)
 	if result.Error != nil {
@@ -48,20 +48,20 @@ func (g gormCRUDRepository[T, ID]) GetAll(ctx context.Context, filter map[string
 	return entities, nil
 }
 
-func (g gormCRUDRepository[T, ID]) GetPage(ctx context.Context, filter map[string]interface{}, page int, pageSize int) (*Page[T], error) {
+func (g gormCRUDRepository[T, ID]) GetPage(ctx context.Context, filter interface{}, page PageQuery) (*Page[T], error) {
 	entities := make([]T, 0)
-	offset := (page - 1) * pageSize
-	result := g.db.WithContext(ctx).Where(filter).Offset(offset).Limit(pageSize).Find(&entities)
+	offset := (page.Number - 1) * page.Size
+	result := g.db.WithContext(ctx).Where(filter).Offset(offset).Limit(page.Size).Find(&entities)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	var total int64
 	g.db.WithContext(ctx).Model(new(T)).Where(filter).Count(&total)
 	return &Page[T]{
-		Items:    entities,
-		Total:    total,
-		Page:     page,
-		PageSize: pageSize,
+		Items:  entities,
+		Total:  total,
+		Number: page.Number,
+		Size:   page.Size,
 	}, nil
 }
 

@@ -406,13 +406,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Limit",
+                        "description": "Size",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset",
+                        "description": "Number",
                         "name": "offset",
                         "in": "query"
                     },

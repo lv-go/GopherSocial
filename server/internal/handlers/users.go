@@ -6,22 +6,26 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sikozonpc/social/internal/auth"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 )
 
 type UsersHandlers struct {
-	authMiddlewares auth.Middlewares
-	store           store.Storage
+	authMiddlewares     auth.Middlewares
+	usersRepository     *repositories.UsersRepository
+	followersRepository *repositories.FollowersRepository
 }
 
 func NewUsersHandlers(
 	authMiddlewares auth.Middlewares,
-	store store.Storage,
+	usersRepository *repositories.UsersRepository,
+	followersRepository *repositories.FollowersRepository,
 ) UsersHandlers {
 	return UsersHandlers{
-		authMiddlewares: authMiddlewares,
-		store:           store,
+		authMiddlewares:     authMiddlewares,
+		usersRepository:     usersRepository,
+		followersRepository: followersRepository,
 	}
 }
 
@@ -40,13 +44,13 @@ func NewUsersHandlers(
 //	@Security		ApiKeyAuth
 //	@Router			/users/{id} [get]
 func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+	userID, err := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	user, err := h.authMiddlewares.GetUser(r.Context(), userID)
+	user, err := h.usersRepository.GetByID(r.Context(), uint(userID))
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
@@ -85,7 +89,7 @@ func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := h.store.Followers.Follow(ctx, followedID, followerUser.ID); err != nil {
+	if err := h.followersRepository.Follow(ctx, uint(followedID), followerUser.ID); err != nil {
 		switch err {
 		case store.ErrConflict:
 			utils.ConflictResponse(w, r, err)
@@ -115,14 +119,14 @@ func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request
 func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
-	unfollowedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+	unfollowedID, err := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
 	ctx := r.Context()
 
-	if err := h.store.Followers.Unfollow(ctx, followerUser.ID, unfollowedID); err != nil {
+	if err := h.followersRepository.Unfollow(ctx, uint(unfollowedID), followerUser.ID); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
 	}
@@ -145,7 +149,7 @@ func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Reque
 func (h *UsersHandlers) ActivateUserHandler(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
 
-	err := h.store.Users.Activate(r.Context(), token)
+	err := h.usersRepository.Activate(r.Context(), token)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:

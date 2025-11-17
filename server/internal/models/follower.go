@@ -1,7 +1,7 @@
 package models
 
 type Follower struct {
-	ID        int64  `json:"id"`
-	UserID    uint   `json:"user_id"`
-	CreatedAt string `json:"created_at"`
+	FollowedID uint   `json:"followedId"`
+	FollowerID uint   `json:"followerId"`
+	CreatedAt  string `json:"created_at"`
 }

@@ -4,12 +4,14 @@ import (
 	"net/http"
 
 	"github.com/sikozonpc/social/internal/auth"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 )
 
 type FeedsHandlers struct {
-	store store.Storage
+	store           store.Storage
+	postsRepository repositories.PostsRepository
 }
 
 func NewFeedHandlers(store store.Storage) FeedsHandlers {
@@ -25,8 +27,8 @@ func NewFeedHandlers(store store.Storage) FeedsHandlers {
 //	@Produce		json
 //	@Param			since	query		string	false	"Since"
 //	@Param			until	query		string	false	"Until"
-//	@Param			limit	query		int		false	"Limit"
-//	@Param			offset	query		int		false	"Offset"
+//	@Param			limit	query		int		false	"Size"
+//	@Param			offset	query		int		false	"Number"
 //	@Param			sort	query		string	false	"Sort"
 //	@Param			tags	query		string	false	"Tags"
 //	@Param			search	query		string	false	"Search"
@@ -58,7 +60,10 @@ func (fh *FeedsHandlers) GetUserFeedHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	user := auth.GetUserFromContext(r)
 
-	feed, err := fh.store.Posts.GetUserFeed(ctx, user.ID, fq)
+	feed, err := fh.postsRepository.GetPageByUserID(ctx, user.ID, repositories.PageQuery{
+		Size:   20,
+		Number: 1,
+	})
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return

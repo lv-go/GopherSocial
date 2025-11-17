@@ -51,7 +51,7 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 		app.Config,
 		app.Authenticator,
 	)
-	app.UsersHandlers = handlers.NewUsersHandlers(app.AuthMiddlewares, app.Store)
+	app.UsersHandlers = handlers.NewUsersHandlers(app.AuthMiddlewares, app.UsersRepository, app.FollowersRepository)
 }
 
 func executeRequest(req *http.Request, mux http.Handler) *httptest.ResponseRecorder {
