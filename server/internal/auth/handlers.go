@@ -11,9 +11,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/mailer"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RegisterUserPayload struct {
@@ -28,26 +30,29 @@ type UserWithToken struct {
 }
 
 type Handlers struct {
-	store         store.Storage
-	mailer        mailer.Client
-	logger        *zap.SugaredLogger
-	config        config.Config
-	authenticator Authenticator
+	store           store.Storage
+	usersRepository *repositories.UsersRepository
+	mailer          mailer.Client
+	logger          *zap.SugaredLogger
+	config          config.Config
+	authenticator   Authenticator
 }
 
 func NewHandlers(
 	store store.Storage,
+	usersRepository *repositories.UsersRepository,
 	mailer mailer.Client,
 	logger *zap.SugaredLogger,
 	config config.Config,
 	authenticator Authenticator,
 ) Handlers {
 	return Handlers{
-		store:         store,
-		mailer:        mailer,
-		logger:        logger,
-		config:        config,
-		authenticator: authenticator,
+		store:           store,
+		usersRepository: usersRepository,
+		mailer:          mailer,
+		logger:          logger,
+		config:          config,
+		authenticator:   authenticator,
 	}
 }
 
@@ -144,26 +149,30 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusCreated, userWithToken)
 }
 
-type CreateUserTokenPayload struct {
+type LoginPayload struct {
 	Email    string `json:"email" validate:"required,email,max=255"`
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
-// CreateTokenHandler godoc
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+// LoginHandler godoc
 //
 //	@Summary		Creates a token
 //	@Description	Creates a token for a user
 //	@Tags			authentication
 //	@Accept			json
 //	@Produce		json
-//	@Param			payload	body		CreateUserTokenPayload	true	"User credentials"
+//	@Param			payload	body		LoginPayload	true	"User credentials"
 //	@Success		200		{string}	string					"Token"
 //	@Failure		400		{object}	error
 //	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
-//	@Router			/authentication/token [post]
-func (h *Handlers) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var payload CreateUserTokenPayload
+//	@Router			/auth/login [post]
+func (h *Handlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var payload LoginPayload
 	if err := utils.ReadJSON(w, r, &payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
@@ -174,7 +183,7 @@ func (h *Handlers) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.store.Users.GetByEmail(r.Context(), payload.Email)
+	user, err := h.usersRepository.GetOneByEmail(r.Context(), payload.Email)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
@@ -185,7 +194,7 @@ func (h *Handlers) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := user.Password.Compare(payload.Password); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password)); err != nil {
 		utils.UnauthorizedErrorResponse(w, r, err)
 		return
 	}
@@ -205,5 +214,7 @@ func (h *Handlers) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusCreated, token)
+	utils.WriteJSON(w, http.StatusOK, LoginResponse{
+		Token: token,
+	})
 }

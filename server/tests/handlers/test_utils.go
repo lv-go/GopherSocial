@@ -10,6 +10,7 @@ import (
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"go.uber.org/zap"
@@ -24,7 +25,11 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	app.Store = store.NewMockStore()
 	app.CacheStorage = cache.NewMockStore()
 
-	app.Authenticator = &auth.TestAuthenticator{}
+	app.Authenticator = auth.NewJWTAuthenticator(
+		cfg.Auth.Token.Secret,
+		cfg.Auth.Token.Iss,
+		cfg.Auth.Token.Iss,
+	)
 
 	// Rate limiter
 	app.RateLimiter = ratelimiter.NewFixedWindowLimiter(
@@ -36,9 +41,12 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 
 	app.RateLimiterMiddlewares = ratelimiter.NewMiddlewares(cfg.RateLimiter, app.RateLimiter)
 
+	app.UsersRepository = repositories.NewUsersRepository()
+
 	app.AuthMiddlewares = auth.NewMiddlewares(
 		app.Store,
 		app.CacheStorage,
+		app.UsersRepository,
 		app.RateLimiter,
 		app.Authenticator,
 		app.Logger,
@@ -46,6 +54,7 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	)
 	app.AuthHandlers = auth.NewHandlers(
 		app.Store,
+		app.UsersRepository,
 		app.Mailer,
 		app.Logger,
 		app.Config,

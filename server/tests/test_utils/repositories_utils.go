@@ -19,7 +19,7 @@ func init() {
 
 	cfg := config.Setup()
 	repositories.SetupGormDB(cfg.GormDBConfig)
-	repositories.SetupRedisDB(cfg.RedisCfg)
+	repositories.SetupRedisClient(cfg.RedisCfg)
 }
 
 func InitTestUser() *models.User {

@@ -40,23 +40,6 @@ var (
 	RolesRepository        *repositories.RolesRepository
 )
 
-type Application struct {
-	Config                 *config.Config
-	Store                  *store.Storage
-	CacheStorage           *cache.Storage
-	Logger                 *zap.SugaredLogger
-	Mailer                 *mailer.Client
-	Authenticator          *auth.Authenticator
-	AuthHandlers           *auth.Handlers
-	AuthMiddlewares        *auth.Middlewares
-	RateLimiter            *ratelimiter.RateLimiter
-	UsersHandlers          *handlers.UsersHandlers
-	PostsHandlers          *handlers.PostsHandlers
-	HealthCheckHandlers    *handlers.HealthCheckHandler
-	FeedHandlers           *handlers.FeedsHandlers
-	RateLimiterMiddlewares *ratelimiter.Middlewares
-}
-
 func Setup(ctx context.Context) {
 	Config = config.Setup()
 
@@ -127,6 +110,7 @@ func Setup(ctx context.Context) {
 	// Handlers
 	AuthHandlers = auth.NewHandlers(
 		Store,
+		UsersRepository,
 		Mailer,
 		Logger,
 		Config,
@@ -135,6 +119,7 @@ func Setup(ctx context.Context) {
 	AuthMiddlewares = auth.NewMiddlewares(
 		Store,
 		CacheStorage,
+		UsersRepository,
 		RateLimiter,
 		Authenticator,
 		Logger,

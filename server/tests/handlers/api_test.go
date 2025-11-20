@@ -4,24 +4,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/sikozonpc/social/internal/api"
-	"github.com/sikozonpc/social/internal/config"
-	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/sikozonpc/social/internal/app"
 )
 
 func TestRateLimiterMiddleware(t *testing.T) {
-	cfg := config.Config{
-		RateLimiter: ratelimiter.Config{
-			RequestsPerTimeFrame: 20,
-			TimeFrame:            time.Second * 5,
-			Enabled:              true,
-		},
-		Addr: ":8080",
-	}
-
-	setupTestApplication(t, cfg)
+	app.Setup(t.Context())
+	cfg := app.Config
 	ts := httptest.NewServer(api.Mount())
 	defer ts.Close()
 

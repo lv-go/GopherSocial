@@ -84,9 +84,9 @@ func Mount() http.Handler {
 		})
 
 		// Public routes
-		r.Route("/authentication", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
 			r.Post("/User", app.AuthHandlers.RegisterUserHandler)
-			r.Post("/token", app.AuthHandlers.CreateTokenHandler)
+			r.Post("/login", app.AuthHandlers.LoginHandler)
 		})
 	})
 

@@ -1,6 +1,9 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
 
 type User struct {
 	gorm.Model
@@ -13,6 +16,15 @@ type User struct {
 	Posts          []Post         `json:"posts"`
 	Comments       []Comment      `json:"comments" gorm:"foreignKey:UserID"`
 	UserInvitation UserInvitation `json:"user_invitation" gorm:"foreignKey:UserID"`
+}
+
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	u.Password = string(hash)
+	return nil
 }
 
 type UserInvitation struct {

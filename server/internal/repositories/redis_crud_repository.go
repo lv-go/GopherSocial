@@ -11,7 +11,7 @@ import (
 )
 
 type redisCRUDRepository[T interface{}, ID any] struct {
-	db           *redis.Client
+	redisClient  *redis.Client
 	cacheBaseKey string
 	expTime      time.Duration
 }
@@ -21,21 +21,26 @@ func NewRedisCRUDRepository[T interface{}, ID any](
 	expTime time.Duration,
 ) CRUDRepository[T, ID] {
 	return &redisCRUDRepository[T, ID]{
-		db:           redisDB,
+		redisClient:  redisClient,
 		cacheBaseKey: cacheBaseKey,
 		expTime:      expTime,
 	}
 }
 
 func (r *redisCRUDRepository[T, ID]) Create(ctx context.Context, entity *T) error {
-	//TODO implement me
-	panic("implement me")
+	cacheKey := fmt.Sprintf("%s-%v", r.cacheBaseKey, entity)
+	jsonEntity, err := json.Marshal(entity)
+	if err != nil {
+		return err
+	}
+
+	return r.redisClient.SetEX(ctx, cacheKey, jsonEntity, r.expTime).Err()
 }
 
 func (r *redisCRUDRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, error) {
 	cacheKey := fmt.Sprintf("%s-%v", r.cacheBaseKey, id)
 
-	data, err := r.db.Get(ctx, cacheKey).Result()
+	data, err := r.redisClient.Get(ctx, cacheKey).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, nil
 	} else if err != nil {
@@ -56,7 +61,7 @@ func (r *redisCRUDRepository[T, ID]) GetByID(ctx context.Context, id ID) (*T, er
 func (r *redisCRUDRepository[T, ID]) GetOne(ctx context.Context, filter interface{}) (*T, error) {
 	cacheKey := fmt.Sprintf("%s-%v", r.cacheBaseKey, filter)
 
-	data, err := r.db.Get(ctx, cacheKey).Result()
+	data, err := r.redisClient.Get(ctx, cacheKey).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, nil
 	} else if err != nil {
@@ -92,12 +97,12 @@ func (r *redisCRUDRepository[T, ID]) UpdateByID(ctx context.Context, id ID, enti
 		return err
 	}
 
-	return r.db.SetEX(ctx, cacheKey, jsonEntity, r.expTime).Err()
+	return r.redisClient.SetEX(ctx, cacheKey, jsonEntity, r.expTime).Err()
 }
 
 func (r *redisCRUDRepository[T, ID]) DeleteByID(ctx context.Context, id ID) error {
 	cacheKey := fmt.Sprintf("user-%d", id)
-	intCmd := r.db.Del(ctx, cacheKey)
+	intCmd := r.redisClient.Del(ctx, cacheKey)
 	if intCmd.Err() != nil {
 		return intCmd.Err()
 	}

@@ -13,50 +13,50 @@ import (
 
 type Config struct {
 	Addr         string
-	Db           dbConfig
+	Db           DbConfig
 	Env          string
 	Version      string
 	ApiURL       string
-	Mail         mailConfig
+	Mail         MailConfig
 	FrontendURL  string
-	Auth         authConfig
+	Auth         AuthConfig
 	RedisCfg     repositories.RedisConfig
 	RateLimiter  ratelimiter.Config
 	GormDBConfig repositories.GormDBConfig
 }
 
-type authConfig struct {
-	Basic basicConfig
-	Token tokenConfig
+type AuthConfig struct {
+	Basic BasicConfig
+	Token TokenConfig
 }
 
-type tokenConfig struct {
+type TokenConfig struct {
 	Secret string
 	Exp    time.Duration
 	Iss    string
 }
 
-type basicConfig struct {
+type BasicConfig struct {
 	User string
 	Pass string
 }
 
-type mailConfig struct {
-	SendGrid  sendGridConfig
-	MailTrap  mailTrapConfig
+type MailConfig struct {
+	SendGrid  SendGridConfig
+	MailTrap  MailTrapConfig
 	FromEmail string
 	Exp       time.Duration
 }
 
-type mailTrapConfig struct {
+type MailTrapConfig struct {
 	ApiKey string
 }
 
-type sendGridConfig struct {
+type SendGridConfig struct {
 	ApiKey string
 }
 
-type dbConfig struct {
+type DbConfig struct {
 	Addr         string
 	MaxOpenConns int
 	MaxIdleConns int

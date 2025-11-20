@@ -20,7 +20,7 @@ import (
 type Middlewares struct {
 	store           store.Storage
 	cacheStorage    cache.Storage
-	usersRepository repositories.UsersRepository
+	usersRepository *repositories.UsersRepository
 	rateLimiter     ratelimiter.RateLimiter
 	authenticator   Authenticator
 	logger          *zap.SugaredLogger
@@ -30,18 +30,20 @@ type Middlewares struct {
 func NewMiddlewares(
 	store store.Storage,
 	cacheStorage cache.Storage,
+	usersRepository *repositories.UsersRepository,
 	rateLimiter ratelimiter.RateLimiter,
 	authenticator Authenticator,
 	logger *zap.SugaredLogger,
 	config config.Config,
 ) Middlewares {
 	return Middlewares{
-		store:         store,
-		cacheStorage:  cacheStorage,
-		rateLimiter:   rateLimiter,
-		authenticator: authenticator,
-		logger:        logger,
-		config:        config,
+		store:           store,
+		cacheStorage:    cacheStorage,
+		usersRepository: usersRepository,
+		rateLimiter:     rateLimiter,
+		authenticator:   authenticator,
+		logger:          logger,
+		config:          config,
 	}
 }
 
