@@ -11,15 +11,11 @@ import (
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
-	"github.com/sikozonpc/social/internal/store/cache"
 	"github.com/sikozonpc/social/internal/utils"
 	"go.uber.org/zap"
 )
 
 type Middlewares struct {
-	store           store.Storage
-	cacheStorage    cache.Storage
 	usersRepository *repositories.UsersRepository
 	rateLimiter     ratelimiter.RateLimiter
 	authenticator   Authenticator
@@ -28,8 +24,6 @@ type Middlewares struct {
 }
 
 func NewMiddlewares(
-	store store.Storage,
-	cacheStorage cache.Storage,
 	usersRepository *repositories.UsersRepository,
 	rateLimiter ratelimiter.RateLimiter,
 	authenticator Authenticator,
@@ -37,8 +31,6 @@ func NewMiddlewares(
 	config config.Config,
 ) Middlewares {
 	return Middlewares{
-		store:           store,
-		cacheStorage:    cacheStorage,
 		usersRepository: usersRepository,
 		rateLimiter:     rateLimiter,
 		authenticator:   authenticator,

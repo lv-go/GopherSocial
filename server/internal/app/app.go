@@ -13,15 +13,12 @@ import (
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/store/cache"
 	"go.uber.org/zap"
 )
 
 var (
 	Config                 config.Config
-	Store                  store.Storage
-	CacheStorage           cache.Storage
 	Logger                 *zap.SugaredLogger
 	Mailer                 mailer.Client
 	Authenticator          auth.Authenticator
@@ -103,22 +100,19 @@ func Setup(ctx context.Context) {
 		Config.Auth.Token.Iss,
 	)
 
-	Store = store.NewStorage(_db)
-	CacheStorage = cache.NewRedisStorage(rdb)
+	repositories.SetupRedisClient(Config.RedisCfg)
+	repositories.SetupGormDB(Config.GormDBConfig)
 
+	// Repositories
+	UsersRepository = repositories.NewUsersRepository()
+	PostRepository = repositories.NewPostsRepository()
+	CommentsRepository = repositories.NewCommentsRepository()
+	FollowersRepository = repositories.NewFollowersRepository()
+	RolesRepository = repositories.NewRolesRepository()
+
+	// Middlewares
 	RateLimiterMiddlewares = ratelimiter.NewMiddlewares(Config.RateLimiter, RateLimiter)
-	// Handlers
-	AuthHandlers = auth.NewHandlers(
-		Store,
-		UsersRepository,
-		Mailer,
-		Logger,
-		Config,
-		Authenticator,
-	)
 	AuthMiddlewares = auth.NewMiddlewares(
-		Store,
-		CacheStorage,
 		UsersRepository,
 		RateLimiter,
 		Authenticator,
@@ -126,10 +120,18 @@ func Setup(ctx context.Context) {
 		Config,
 	)
 
+	// Handlers
+	AuthHandlers = auth.NewHandlers(
+		UsersRepository,
+		Mailer,
+		Logger,
+		Config,
+		Authenticator,
+	)
 	HealthCheckHandlers = handlers.NewHealthCheckHandler(Config)
 	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, UsersRepository, FollowersRepository)
 	PostsHandlers = handlers.NewPostsHandlers(UsersRepository, PostRepository, CommentsRepository, RolesRepository)
-	FeedHandlers = handlers.NewFeedHandlers(Store)
+	FeedHandlers = handlers.NewFeedHandlers(PostRepository)
 
 	// Metrics collected
 	expvar.NewString("version").Set(Config.Version)

@@ -2,13 +2,15 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"math/rand"
 
-	"github.com/sikozonpc/social/internal/store"
+	"github.com/sikozonpc/social/internal/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var usernames = []string{
@@ -74,14 +76,26 @@ var comments = []string{
 	"Thanks for the information, very useful.",
 }
 
-func Seed(store store.Storage, db *sql.DB) {
+func Seed() {
+	dsn := "host=" + os.Getenv("DB_HOST") +
+		" user=" + os.Getenv("DB_USER") +
+		" password=" + os.Getenv("DB_PASSWORD") +
+		" dbname=" + os.Getenv("DB_NAME") +
+		" port=" + os.Getenv("DB_PORT") +
+		" sslmode=disable" +
+		" TimeZone=UTC"
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ctx := context.Background()
 
 	users := generateUsers(100)
-	tx, _ := db.BeginTx(ctx, nil)
+	tx := db.WithContext(ctx).Begin()
 
 	for _, user := range users {
-		if err := store.Users.Create(ctx, tx, user); err != nil {
+		if err := gorm.G[models.User](tx).Create(ctx, user); err != nil {
 			_ = tx.Rollback()
 			log.Println("Error creating user:", err)
 			return
@@ -92,7 +106,7 @@ func Seed(store store.Storage, db *sql.DB) {
 
 	posts := generatePosts(200, users)
 	for _, post := range posts {
-		if err := store.Posts.Create(ctx, post); err != nil {
+		if err := gorm.G[models.Post](tx).Create(ctx, post); err != nil {
 			log.Println("Error creating post:", err)
 			return
 		}
@@ -100,7 +114,7 @@ func Seed(store store.Storage, db *sql.DB) {
 
 	comments := generateComments(500, users, posts)
 	for _, comment := range comments {
-		if err := store.Comments.Create(ctx, comment); err != nil {
+		if err := gorm.G[models.Comment](tx).Create(ctx, comment); err != nil {
 			log.Println("Error creating comment:", err)
 			return
 		}
@@ -109,14 +123,14 @@ func Seed(store store.Storage, db *sql.DB) {
 	log.Println("Seeding complete")
 }
 
-func generateUsers(num int) []*store.User {
-	users := make([]*store.User, num)
+func generateUsers(num int) []*models.User {
+	users := make([]*models.User, num)
 
 	for i := 0; i < num; i++ {
-		users[i] = &store.User{
+		users[i] = &models.User{
 			Username: usernames[i%len(usernames)] + fmt.Sprintf("%d", i),
 			Email:    usernames[i%len(usernames)] + fmt.Sprintf("%d", i) + "@example.com",
-			Role: store.Role{
+			Role: models.Role{
 				Name: "user",
 			},
 		}
@@ -125,12 +139,12 @@ func generateUsers(num int) []*store.User {
 	return users
 }
 
-func generatePosts(num int, users []*store.User) []*store.Post {
-	posts := make([]*store.Post, num)
+func generatePosts(num int, users []*models.User) []*models.Post {
+	posts := make([]*models.Post, num)
 	for i := 0; i < num; i++ {
 		user := users[rand.Intn(len(users))]
 
-		posts[i] = &store.Post{
+		posts[i] = &models.Post{
 			UserID:  user.ID,
 			Title:   titles[rand.Intn(len(titles))],
 			Content: titles[rand.Intn(len(contents))],
@@ -144,10 +158,10 @@ func generatePosts(num int, users []*store.User) []*store.Post {
 	return posts
 }
 
-func generateComments(num int, users []*store.User, posts []*store.Post) []*store.Comment {
-	cms := make([]*store.Comment, num)
+func generateComments(num int, users []*models.User, posts []*models.Post) []*models.Comment {
+	cms := make([]*models.Comment, num)
 	for i := 0; i < num; i++ {
-		cms[i] = &store.Comment{
+		cms[i] = &models.Comment{
 			PostID:  posts[rand.Intn(len(posts))].ID,
 			UserID:  users[rand.Intn(len(users))].ID,
 			Content: comments[rand.Intn(len(comments))],

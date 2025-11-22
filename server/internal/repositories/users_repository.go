@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"log/slog"
 	"time"
 
 	"github.com/sikozonpc/social/internal/models"
@@ -38,9 +39,17 @@ func (r *UsersRepository) GetByID(ctx context.Context, id uint) (*models.User, e
 	if err != nil {
 		return nil, err
 	}
-	if user == nil {
-		return r.gormCRUDRepository.GetByID(ctx, id)
+	if user != nil {
+		slog.Debug("User found in Redis cache", "user", user)
+		return user, nil
 	}
+	user, err = r.gormCRUDRepository.GetByID(ctx, id)
+	err = r.redisCRUDRepository.Create(ctx, user)
+	if err != nil {
+		slog.Error("Error adding user to Redis cache", "error", err)
+		return nil, err
+	}
+	slog.Debug("User found in DB", "user", user)
 	return user, nil
 }
 
@@ -49,9 +58,17 @@ func (r *UsersRepository) GetOne(ctx context.Context, filter interface{}) (*mode
 	if err != nil {
 		return nil, err
 	}
-	if user == nil {
-		return r.gormCRUDRepository.GetOne(ctx, filter)
+	if user != nil {
+		slog.Debug("User found in Redis cache", "user", user)
+		return user, nil
 	}
+	user, err = r.gormCRUDRepository.GetOne(ctx, filter)
+	err = r.redisCRUDRepository.Create(ctx, user)
+	if err != nil {
+		slog.Error("Error adding user to Redis cache", "error", err)
+		return nil, err
+	}
+	slog.Debug("User found in DB", "user", user)
 	return user, nil
 }
 
@@ -106,7 +123,7 @@ func (r *UsersRepository) GetOneByEmail(ctx context.Context, email string) (*mod
 func (r *UsersRepository) Activate(ctx context.Context, token string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. find the user that this token belongs to
-		user, err := r.getUserFromInvitation(ctx, tx, token)
+		user, err := r.getUserFromInvitation(tx, token)
 		if err != nil {
 			return err
 		}
@@ -124,7 +141,7 @@ func (r *UsersRepository) Activate(ctx context.Context, token string) error {
 	})
 }
 
-func (r *UsersRepository) getUserFromInvitation(ctx context.Context, tx *gorm.DB, token string) (*models.User, error) {
+func (r *UsersRepository) getUserFromInvitation(tx *gorm.DB, token string) (*models.User, error) {
 	query := `
 		SELECT u.id, u.username, u.email, u.created_at, u.is_active
 		FROM users u
@@ -141,4 +158,23 @@ func (r *UsersRepository) getUserFromInvitation(ctx context.Context, tx *gorm.DB
 		return nil, tx.Error
 	}
 	return user, nil
+}
+
+func (r *UsersRepository) CreateAndInvite(ctx context.Context, user *models.User, token string, invitationExp time.Duration) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := r.Create(ctx, user); err != nil {
+			return err
+		}
+
+		db := tx.WithContext(ctx).Create(models.UserInvitation{
+			Token:  token,
+			UserID: user.ID,
+			Expiry: invitationExp,
+		})
+		if db.Error != nil {
+			return db.Error
+		}
+
+		return nil
+	})
 }

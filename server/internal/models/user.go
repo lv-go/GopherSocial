@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -29,7 +31,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 
 type UserInvitation struct {
 	gorm.Model
-	UserID uint   `json:"user_id"`
-	Token  string `json:"token"`
-	Expiry int64  `json:"expiry"`
+	UserID uint          `json:"user_id"`
+	Token  string        `json:"token"`
+	Expiry time.Duration `json:"expiry"`
 }

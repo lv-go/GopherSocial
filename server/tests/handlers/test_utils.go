@@ -11,8 +11,6 @@ import (
 	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
-	"github.com/sikozonpc/social/internal/store/cache"
 	"go.uber.org/zap"
 )
 
@@ -22,8 +20,6 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	app.Logger = zap.NewNop().Sugar()
 	// Uncomment to enable logs
 	// logger := zap.Must(zap.NewProduction()).Sugar()
-	app.Store = store.NewMockStore()
-	app.CacheStorage = cache.NewMockStore()
 
 	app.Authenticator = auth.NewJWTAuthenticator(
 		cfg.Auth.Token.Secret,
@@ -44,8 +40,6 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	app.UsersRepository = repositories.NewUsersRepository()
 
 	app.AuthMiddlewares = auth.NewMiddlewares(
-		app.Store,
-		app.CacheStorage,
 		app.UsersRepository,
 		app.RateLimiter,
 		app.Authenticator,
@@ -53,7 +47,6 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 		app.Config,
 	)
 	app.AuthHandlers = auth.NewHandlers(
-		app.Store,
 		app.UsersRepository,
 		app.Mailer,
 		app.Logger,

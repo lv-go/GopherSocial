@@ -13,7 +13,7 @@ export const LoginPage: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      const data = await fetch(`${API_URL}/authentication/token`, {
+      const data = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         body: JSON.stringify({ email, password }),
       })

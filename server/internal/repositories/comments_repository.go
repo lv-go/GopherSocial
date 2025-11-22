@@ -12,9 +12,9 @@ type CommentsRepository struct {
 	db *gorm.DB
 }
 
-func NewCommentsRepository(db *gorm.DB) *CommentsRepository {
+func NewCommentsRepository() *CommentsRepository {
 	return &CommentsRepository{
-		db: db,
+		db: gormDB,
 	}
 }
 

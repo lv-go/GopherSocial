@@ -10,12 +10,11 @@ import (
 )
 
 type FeedsHandlers struct {
-	store           store.Storage
-	postsRepository repositories.PostsRepository
+	postsRepository *repositories.PostsRepository
 }
 
-func NewFeedHandlers(store store.Storage) FeedsHandlers {
-	return FeedsHandlers{store: store}
+func NewFeedHandlers(postsRepository *repositories.PostsRepository) FeedsHandlers {
+	return FeedsHandlers{postsRepository: postsRepository}
 }
 
 // GetUserFeedHandler godoc

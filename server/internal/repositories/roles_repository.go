@@ -12,9 +12,9 @@ type RolesRepository struct {
 	db *gorm.DB
 }
 
-func NewRolesRepository(db *gorm.DB) *RolesRepository {
+func NewRolesRepository() *RolesRepository {
 	return &RolesRepository{
-		db: db,
+		db: gormDB,
 	}
 }
 

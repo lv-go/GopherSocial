@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/mailer"
+	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
@@ -25,12 +26,11 @@ type RegisterUserPayload struct {
 }
 
 type UserWithToken struct {
-	*store.User
+	*models.User
 	Token string `json:"token"`
 }
 
 type Handlers struct {
-	store           store.Storage
 	usersRepository *repositories.UsersRepository
 	mailer          mailer.Client
 	logger          *zap.SugaredLogger
@@ -39,7 +39,6 @@ type Handlers struct {
 }
 
 func NewHandlers(
-	store store.Storage,
 	usersRepository *repositories.UsersRepository,
 	mailer mailer.Client,
 	logger *zap.SugaredLogger,
@@ -47,7 +46,6 @@ func NewHandlers(
 	authenticator Authenticator,
 ) Handlers {
 	return Handlers{
-		store:           store,
 		usersRepository: usersRepository,
 		mailer:          mailer,
 		logger:          logger,
@@ -80,18 +78,20 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := &store.User{
-		Username: payload.Username,
-		Email:    payload.Email,
-		Role: store.Role{
-			Name: "User",
-		},
-	}
-
 	// hash the User password
-	if err := user.Password.Set(payload.Password); err != nil {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return
+	}
+
+	user := &models.User{
+		Username: payload.Username,
+		Email:    payload.Email,
+		Password: string(passwordHash),
+		Role: models.Role{
+			Name: "User",
+		},
 	}
 
 	ctx := r.Context()
@@ -102,7 +102,7 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte(plainToken))
 	hashToken := hex.EncodeToString(hash[:])
 
-	err := h.store.Users.CreateAndInvite(ctx, user, hashToken, h.config.Mail.Exp)
+	err = h.usersRepository.CreateAndInvite(ctx, user, hashToken, h.config.Mail.Exp)
 	if err != nil {
 		switch err {
 		case store.ErrDuplicateEmail:
@@ -136,7 +136,7 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 		h.logger.Errorw("error sending welcome email", "error", err)
 
 		// rollback User creation if email fails (SAGA pattern)
-		if err := h.store.Users.Delete(ctx, user.ID); err != nil {
+		if err := h.usersRepository.DeleteByID(ctx, user.ID); err != nil {
 			h.logger.Errorw("error deleting User", "error", err)
 		}
 

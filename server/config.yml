@@ -12,6 +12,12 @@ redisCfg:
   pw:      ""
   db:      0
   enabled: true
+gormDBConfig:
+  host: localhost
+  port: 5432
+  user: admin
+  password: S3cureP@ssw0rd!
+  dbname: gopher_social
 mail:
   exp:       72h
   fromEmail: ""

@@ -11,9 +11,9 @@ type FollowersRepository struct {
 	db *gorm.DB
 }
 
-func NewFollowersRepository(db *gorm.DB) *FollowersRepository {
+func NewFollowersRepository() *FollowersRepository {
 	return &FollowersRepository{
-		db: db,
+		db: gormDB,
 	}
 }
 
