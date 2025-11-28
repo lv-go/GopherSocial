@@ -25,7 +25,7 @@ func NewMailTrapClient(apiKey, fromEmail string) (mailtrapClient, error) {
 	}, nil
 }
 
-func (m mailtrapClient) Send(templateFile, username, email string, data any, isSandbox bool) (int, error) {
+func (m mailtrapClient) SendActivationEmail(templateFile, username, email, activationUrl string) (int, error) {
 	// Template parsing and building
 	tmpl, err := template.ParseFS(FS, "templates/"+templateFile)
 	if err != nil {
@@ -33,13 +33,13 @@ func (m mailtrapClient) Send(templateFile, username, email string, data any, isS
 	}
 
 	subject := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(subject, "subject", data)
+	err = tmpl.ExecuteTemplate(subject, "subject", activationUrl)
 	if err != nil {
 		return -1, err
 	}
 
 	body := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(body, "body", data)
+	err = tmpl.ExecuteTemplate(body, "body", activationUrl)
 	if err != nil {
 		return -1, err
 	}

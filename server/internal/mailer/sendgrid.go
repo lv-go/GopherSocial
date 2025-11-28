@@ -26,7 +26,7 @@ func NewSendgrid(apiKey, fromEmail string) *SendGridMailer {
 	}
 }
 
-func (m *SendGridMailer) Send(templateFile, username, email string, data any, isSandbox bool) (int, error) {
+func (m *SendGridMailer) SendActivationEmail(templateFile, username, email, activationUrl string) (int, error) {
 	from := mail.NewEmail(FromName, m.fromEmail)
 	to := mail.NewEmail(username, email)
 
@@ -37,13 +37,13 @@ func (m *SendGridMailer) Send(templateFile, username, email string, data any, is
 	}
 
 	subject := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(subject, "subject", data)
+	err = tmpl.ExecuteTemplate(subject, "subject", activationUrl)
 	if err != nil {
 		return -1, err
 	}
 
 	body := new(bytes.Buffer)
-	err = tmpl.ExecuteTemplate(body, "body", data)
+	err = tmpl.ExecuteTemplate(body, "body", activationUrl)
 	if err != nil {
 		return -1, err
 	}
@@ -52,7 +52,7 @@ func (m *SendGridMailer) Send(templateFile, username, email string, data any, is
 
 	message.SetMailSettings(&mail.MailSettings{
 		SandboxMode: &mail.Setting{
-			Enable: &isSandbox,
+			//Enable: &isSandbox,
 		},
 	})
 

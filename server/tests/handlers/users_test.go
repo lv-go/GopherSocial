@@ -62,7 +62,7 @@ func TestGetUser(t *testing.T) {
 
 		rr := executeRequest(req, mux)
 		checkResponseCode(t, http.StatusOK, rr.Code)
-		var loginResponse auth.LoginResponse
+		var loginResponse auth.TokenResponse
 		err = json.Unmarshal(rr.Body.Bytes(), &loginResponse)
 		if err != nil {
 			t.Fatal(err)

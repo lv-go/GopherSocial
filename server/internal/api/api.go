@@ -67,8 +67,6 @@ func Mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Put("/activate/{token}", app.UsersHandlers.ActivateUserHandler)
-
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
 
@@ -85,8 +83,9 @@ func Mount() http.Handler {
 
 		// Public routes
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/User", app.AuthHandlers.RegisterUserHandler)
+			r.Post("/register", app.AuthHandlers.RegisterUserHandler)
 			r.Post("/login", app.AuthHandlers.LoginHandler)
+			r.Put("/confirm/{token}", app.AuthHandlers.ConfirmHandler)
 		})
 	})
 

@@ -63,6 +63,9 @@ func (r *UsersRepository) GetOne(ctx context.Context, filter interface{}) (*mode
 		return user, nil
 	}
 	user, err = r.gormCRUDRepository.GetOne(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
 	err = r.redisCRUDRepository.Create(ctx, user)
 	if err != nil {
 		slog.Error("Error adding user to Redis cache", "error", err)
@@ -129,21 +132,18 @@ func (r *UsersRepository) Activate(ctx context.Context, token string) error {
 		}
 
 		// 2. update the user
-		user.IsActive = true
-		if err := tx.Save(user).Error; err != nil {
+		if err := tx.Model(user).UpdateColumn("is_active", true).Error; err != nil {
 			return err
 		}
 
 		// 3. clean the invitations
-		return tx.Delete(models.UserInvitation{
-			UserID: user.ID,
-		}).Error
+		return tx.Delete(models.UserInvitation{}, "user_id = ?", user.ID).Error
 	})
 }
 
 func (r *UsersRepository) getUserFromInvitation(tx *gorm.DB, token string) (*models.User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.created_at, u.is_active
+		SELECT u.id, u.username, u.email, u.created_at, u.is_active, u.role_id
 		FROM users u
 		JOIN user_invitations ui ON u.id = ui.user_id
 		WHERE ui.token = $1 AND ui.expiry > $2
@@ -153,7 +153,7 @@ func (r *UsersRepository) getUserFromInvitation(tx *gorm.DB, token string) (*mod
 	hashToken := hex.EncodeToString(hash[:])
 
 	user := &models.User{}
-	tx.Find(user, query, hashToken, time.Now())
+	tx.Raw(query, hashToken, time.Now()).Scan(user)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
@@ -162,14 +162,14 @@ func (r *UsersRepository) getUserFromInvitation(tx *gorm.DB, token string) (*mod
 
 func (r *UsersRepository) CreateAndInvite(ctx context.Context, user *models.User, token string, invitationExp time.Duration) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := r.Create(ctx, user); err != nil {
+		if err := tx.WithContext(ctx).Create(user).Error; err != nil {
 			return err
 		}
 
 		db := tx.WithContext(ctx).Create(models.UserInvitation{
 			Token:  token,
 			UserID: user.ID,
-			Expiry: invitationExp,
+			Expiry: time.Now().Add(invitationExp),
 		})
 		if db.Error != nil {
 			return db.Error

@@ -1,0 +1,25 @@
+
+.comments {
+    display: flex;
+    flex-direction: column;
+    margin-top: 2rem;
+}
+
+.comment {
+    display: flex;
+    color: #f4f4f495;
+    align-items: center;
+    text-align: right;
+    width: 100%;
+}
+
+.comment> :first-child {
+    color: burlywood;
+    margin-right: 5px;
+}
+
+.comment-date {
+    margin-left: 20px;
+    color: gray;
+    font-size: 10px;
+}

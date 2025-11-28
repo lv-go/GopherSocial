@@ -130,7 +130,8 @@ func generateUsers(num int) []*models.User {
 		users[i] = &models.User{
 			Username: usernames[i%len(usernames)] + fmt.Sprintf("%d", i),
 			Email:    usernames[i%len(usernames)] + fmt.Sprintf("%d", i) + "@example.com",
-			Role: models.Role{
+			Role: &models.Role{
+				ID:   1,
 				Name: "user",
 			},
 		}

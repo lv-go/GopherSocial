@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
@@ -89,9 +91,8 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 		Username: payload.Username,
 		Email:    payload.Email,
 		Password: string(passwordHash),
-		Role: models.Role{
-			Name: "User",
-		},
+		IsActive: false,
+		RoleID:   1,
 	}
 
 	ctx := r.Context()
@@ -115,23 +116,10 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userWithToken := UserWithToken{
-		User:  user,
-		Token: plainToken,
-	}
 	activationURL := fmt.Sprintf("%s/confirm/%s", h.config.FrontendURL, plainToken)
 
-	isProdEnv := h.config.Env == "production"
-	vars := struct {
-		Username      string
-		ActivationURL string
-	}{
-		Username:      user.Username,
-		ActivationURL: activationURL,
-	}
-
 	// send mail
-	status, err := h.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	status, err := h.mailer.SendActivationEmail(mailer.UserWelcomeTemplate, user.Username, user.Email, activationURL)
 	if err != nil {
 		h.logger.Errorw("error sending welcome email", "error", err)
 
@@ -146,7 +134,8 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Infow("Email sent", "status code", status)
 
-	utils.WriteJSON(w, http.StatusCreated, userWithToken)
+	utils.WriteJSONMessage(w, http.StatusCreated,
+		"User created successfully. Please check your email to confirm your account.")
 }
 
 type LoginPayload struct {
@@ -154,7 +143,7 @@ type LoginPayload struct {
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
-type LoginResponse struct {
+type TokenResponse struct {
 	Token string `json:"token"`
 }
 
@@ -184,6 +173,7 @@ func (h *Handlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.usersRepository.GetOneByEmail(r.Context(), payload.Email)
+	slog.Debug("GetOneByEmail result: ", "user", user, "err", err)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
@@ -191,6 +181,11 @@ func (h *Handlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			utils.InternalServerError(w, r, err)
 		}
+		return
+	}
+
+	if !user.IsActive {
+		utils.UnauthorizedErrorResponse(w, r, fmt.Errorf("user is not active"))
 		return
 	}
 
@@ -214,7 +209,36 @@ func (h *Handlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, LoginResponse{
+	utils.WriteJSON(w, http.StatusOK, TokenResponse{
 		Token: token,
 	})
+}
+
+// ConfirmHandler godoc
+//
+//	@Summary		Activates/Register a user
+//	@Description	Activates/Register a user by invitation token
+//	@Tags			users
+//	@Produce		json
+//	@Param			token	path		string	true	"Invitation token"
+//	@Success		204		{string}	string	"User activated"
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/confirm/{token} [put]
+func (h *Handlers) ConfirmHandler(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	err := h.usersRepository.Activate(r.Context(), token)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			utils.NotFoundResponse(w, r, err)
+		default:
+			utils.InternalServerError(w, r, err)
+		}
+		return
+	}
+
+	utils.WriteJSONMessage(w, http.StatusOK, "User activated successfully")
 }

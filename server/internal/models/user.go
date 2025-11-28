@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -14,24 +13,14 @@ type User struct {
 	Password       string         `json:"-"`
 	IsActive       bool           `json:"is_active"`
 	RoleID         int64          `json:"role_id"`
-	Role           Role           `json:"role"`
+	Role           *Role          `json:"role"`
 	Posts          []Post         `json:"posts"`
 	Comments       []Comment      `json:"comments" gorm:"foreignKey:UserID"`
 	UserInvitation UserInvitation `json:"user_invitation" gorm:"foreignKey:UserID"`
 }
 
-func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	u.Password = string(hash)
-	return nil
-}
-
 type UserInvitation struct {
-	gorm.Model
-	UserID uint          `json:"user_id"`
-	Token  string        `json:"token"`
-	Expiry time.Duration `json:"expiry"`
+	UserID uint      `json:"user_id"`
+	Token  string    `json:"token"`
+	Expiry time.Time `json:"expiry"`
 }

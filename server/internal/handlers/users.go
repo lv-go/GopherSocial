@@ -133,32 +133,3 @@ func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Reque
 
 	utils.WriteJSON(w, http.StatusNoContent, nil)
 }
-
-// ActivateUserHandler godoc
-//
-//	@Summary		Activates/Register a user
-//	@Description	Activates/Register a user by invitation token
-//	@Tags			users
-//	@Produce		json
-//	@Param			token	path		string	true	"Invitation token"
-//	@Success		204		{string}	string	"User activated"
-//	@Failure		404		{object}	error
-//	@Failure		500		{object}	error
-//	@Security		ApiKeyAuth
-//	@Router			/users/activate/{token} [put]
-func (h *UsersHandlers) ActivateUserHandler(w http.ResponseWriter, r *http.Request) {
-	token := chi.URLParam(r, "token")
-
-	err := h.usersRepository.Activate(r.Context(), token)
-	if err != nil {
-		switch err {
-		case store.ErrNotFound:
-			utils.NotFoundResponse(w, r, err)
-		default:
-			utils.InternalServerError(w, r, err)
-		}
-		return
-	}
-
-	utils.WriteJSON(w, http.StatusNoContent, "")
-}

@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/sikozonpc/social/internal/models"
-	"gorm.io/gorm"
 )
 
 type CommentsRepository struct {
 	gormCRUDRepository[models.Comment, uint]
-	db *gorm.DB
 }
 
 func NewCommentsRepository() *CommentsRepository {
 	return &CommentsRepository{
-		db: gormDB,
+		gormCRUDRepository: gormCRUDRepository[models.Comment, uint]{
+			db: gormDB,
+		},
 	}
 }
 

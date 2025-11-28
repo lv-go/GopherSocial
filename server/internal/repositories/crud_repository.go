@@ -14,10 +14,10 @@ type CRUDRepository[T interface{}, ID any] interface {
 }
 
 type Page[T any] struct {
-	Items  []T
-	Total  int64
-	Number int
-	Size   int
+	Items  []T   `json:"items"`
+	Total  int64 `json:"total"`
+	Number int   `json:"number"`
+	Size   int   `json:"size"`
 }
 
 type PageQuery struct {

@@ -88,7 +88,11 @@ func Setup(ctx context.Context) {
 
 	// Mailer
 	// mailer := mailer.NewSendgrid(cfg.mail.SendGrid.ApiKey, cfg.mail.FromEmail)
-	Mailer, err = mailer.NewMailTrapClient(Config.Mail.MailTrap.ApiKey, Config.Mail.FromEmail)
+	if Config.Env != "production" {
+		Mailer = mailer.NewMockMailerClient()
+	} else {
+		Mailer, err = mailer.NewMailTrapClient(Config.Mail.MailTrap.ApiKey, Config.Mail.FromEmail)
+	}
 	if err != nil {
 		Logger.Fatal(err)
 	}

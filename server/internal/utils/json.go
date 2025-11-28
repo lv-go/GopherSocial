@@ -12,7 +12,7 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
 		slog.Error("Error writing JSON response", "error", err)
-		WriteJSONMessage(w, http.StatusInternalServerError, "the server encountered a problem")
+		//WriteJSONMessage(w, http.StatusInternalServerError, "the server encountered a problem")
 	}
 }
 
