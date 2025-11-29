@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,10 +16,10 @@ import (
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type RegisterUserPayload struct {
@@ -105,10 +106,8 @@ func (h *Handlers) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.usersRepository.CreateAndInvite(ctx, user, hashToken, h.config.Mail.Exp)
 	if err != nil {
-		switch err {
-		case store.ErrDuplicateEmail:
-			utils.BadRequestResponse(w, r, err)
-		case store.ErrDuplicateUsername:
+		switch {
+		case errors.Is(err, gorm.ErrDuplicatedKey):
 			utils.BadRequestResponse(w, r, err)
 		default:
 			utils.InternalServerError(w, r, err)
@@ -175,8 +174,8 @@ func (h *Handlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := h.usersRepository.GetOneByEmail(r.Context(), payload.Email)
 	slog.Debug("GetOneByEmail result: ", "user", user, "err", err)
 	if err != nil {
-		switch err {
-		case store.ErrNotFound:
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			utils.UnauthorizedErrorResponse(w, r, err)
 		default:
 			utils.InternalServerError(w, r, err)
@@ -231,8 +230,8 @@ func (h *Handlers) ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := h.usersRepository.Activate(r.Context(), token)
 	if err != nil {
-		switch err {
-		case store.ErrNotFound:
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			utils.NotFoundResponse(w, r, err)
 		default:
 			utils.InternalServerError(w, r, err)

@@ -7,6 +7,8 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
+    "serve": "http-server ./build/client -p 5173 -P http://localhost:5173/confirm/:token/?",
+    "build-and-serve": "npm run build && npm run serve",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
     "@types/node": "^22",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "http-server": "^14.1.1",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",

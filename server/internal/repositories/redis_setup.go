@@ -11,10 +11,11 @@ type RedisConfig struct {
 	Enabled bool
 }
 
-func SetupRedisClient(cfg RedisConfig) {
+func SetupRedisClient(cfg RedisConfig) *redis.Client {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Pw,
 		DB:       cfg.Db,
 	})
+	return redisClient
 }

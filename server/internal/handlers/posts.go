@@ -11,8 +11,8 @@ import (
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
+	"gorm.io/gorm"
 )
 
 type postKey string
@@ -143,7 +143,7 @@ func (h *PostsHandlers) DeletePostHandler(w http.ResponseWriter, r *http.Request
 
 	if err := h.postsRepository.DeleteByID(ctx, uint(id)); err != nil {
 		switch {
-		case errors.Is(err, store.ErrNotFound):
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			utils.NotFoundResponse(w, r, err)
 		default:
 			utils.InternalServerError(w, r, err)
@@ -227,7 +227,7 @@ func (h *PostsHandlers) PostsContextMiddleware(next http.Handler) http.Handler {
 		post, err := h.postsRepository.GetByID(ctx, uint(id))
 		if err != nil {
 			switch {
-			case errors.Is(err, store.ErrNotFound):
+			case errors.Is(err, gorm.ErrRecordNotFound):
 				utils.NotFoundResponse(w, r, err)
 			default:
 				utils.InternalServerError(w, r, err)

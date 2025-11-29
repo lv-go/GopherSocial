@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
 )
 
@@ -37,21 +37,33 @@ func NewFeedHandlers(postsRepository *repositories.PostsRepository) FeedsHandler
 //	@Security		ApiKeyAuth
 //	@Router			/users/feed [get]
 func (fh *FeedsHandlers) GetUserFeedHandler(w http.ResponseWriter, r *http.Request) {
-	fq := store.PaginatedFeedQuery{
-		Limit:  20,
-		Offset: 0,
-		Sort:   "desc",
-		Tags:   []string{},
-		Search: "",
+	pageSizeStr := r.URL.Query().Get("size")
+	pageNumberStr := r.URL.Query().Get("number")
+
+	var pageSize, pageNumber int
+	if pageSizeStr == "" || pageNumberStr == "" {
+		pageSize = 20
+		pageNumber = 1
+	} else {
+		var err error
+		pageSize, err = strconv.Atoi(pageSizeStr)
+		if err != nil {
+			utils.BadRequestResponse(w, r, err)
+			return
+		}
+
+		pageNumber, err = strconv.Atoi(pageNumberStr)
+		if err != nil {
+			utils.BadRequestResponse(w, r, err)
+			return
+		}
 	}
 
-	fq, err := fq.Parse(r)
-	if err != nil {
-		utils.BadRequestResponse(w, r, err)
-		return
+	pageQuery := repositories.PageQuery{
+		Size:   pageSize,
+		Number: pageNumber,
 	}
-
-	if err := utils.Validate.Struct(fq); err != nil {
+	if err := utils.Validate.Struct(pageQuery); err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
@@ -59,10 +71,7 @@ func (fh *FeedsHandlers) GetUserFeedHandler(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	user := auth.GetUserFromContext(r)
 
-	feed, err := fh.postsRepository.GetPageByUserID(ctx, user.ID, repositories.PageQuery{
-		Size:   20,
-		Number: 1,
-	})
+	feed, err := fh.postsRepository.GetPageByUserID(ctx, user.ID, pageQuery)
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return

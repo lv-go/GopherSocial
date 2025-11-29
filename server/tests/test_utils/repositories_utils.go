@@ -22,26 +22,9 @@ func init() {
 	repositories.SetupRedisClient(cfg.RedisCfg)
 }
 
-func InitTestUser() *models.User {
+func GetUser1() *models.User {
 	userRepository := repositories.NewUsersRepository()
-	testUser, err := userRepository.GetOne(context.Background(), models.User{Username: "testUser"})
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			testUser = &models.User{
-				Username: "testUser",
-				Email:    "testuser@email.com",
-				Password: "testPassword",
-				IsActive: true,
-				RoleID:   1,
-			}
-			err = userRepository.Create(context.Background(), testUser)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			panic(err)
-		}
-	}
+	testUser, _ := userRepository.GetOne(context.Background(), models.User{Username: "user1@test.com"})
 
 	return testUser
 }

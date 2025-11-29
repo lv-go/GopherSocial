@@ -13,7 +13,6 @@ import (
 	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store/cache"
 	"go.uber.org/zap"
 )
 
@@ -68,7 +67,7 @@ func Setup(ctx context.Context) {
 	// Cache
 	var rdb *redis.Client
 	if Config.RedisCfg.Enabled {
-		rdb = cache.NewRedisClient(Config.RedisCfg.Addr, Config.RedisCfg.Pw, Config.RedisCfg.Db)
+		rdb = repositories.SetupRedisClient(Config.RedisCfg)
 		Logger.Info("redis cache connection established")
 
 		go func() {

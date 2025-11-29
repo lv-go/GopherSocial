@@ -16,7 +16,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/sikozonpc/social/docs" // This is required to generate swagger docs
 	"github.com/sikozonpc/social/internal/app"
-	"github.com/sikozonpc/social/internal/env"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
@@ -28,7 +27,7 @@ func Mount() http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{env.GetString("CORS_ALLOWED_ORIGIN", "http://localhost:5173")},
+		AllowedOrigins:   []string{app.Config.FrontendURL},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

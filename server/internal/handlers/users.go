@@ -7,8 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/repositories"
-	"github.com/sikozonpc/social/internal/store"
 	"github.com/sikozonpc/social/internal/utils"
+	"gorm.io/gorm"
 )
 
 type UsersHandlers struct {
@@ -53,7 +53,7 @@ func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := h.usersRepository.GetByID(r.Context(), uint(userID))
 	if err != nil {
 		switch err {
-		case store.ErrNotFound:
+		case gorm.ErrRecordNotFound:
 			utils.NotFoundResponse(w, r, err)
 			return
 		default:
@@ -91,7 +91,7 @@ func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request
 
 	if err := h.followersRepository.Follow(ctx, uint(followedID), followerUser.ID); err != nil {
 		switch err {
-		case store.ErrConflict:
+		case gorm.ErrCheckConstraintViolated:
 			utils.ConflictResponse(w, r, err)
 			return
 		default:

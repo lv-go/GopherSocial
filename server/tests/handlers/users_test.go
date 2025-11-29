@@ -35,7 +35,7 @@ func TestGetUser(t *testing.T) {
 			},
 		},
 	}
-	test_utils.InitTestUser()
+	user1 := test_utils.GetUser1()
 
 	setupTestApplication(t, cfg)
 	mux := api.Mount()
@@ -54,7 +54,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("should login the user", func(t *testing.T) {
-		jsonBody := `{"email": "testuser@email.com", "password": "testPassword"}`
+		jsonBody := `{"email": "` + user1.Email + `", "password": "S3cr3tP@ssw0rd"}`
 		req, err := http.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(jsonBody))
 		if err != nil {
 			t.Fatal(err)

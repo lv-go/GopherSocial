@@ -90,6 +90,6 @@ func Setup() Config {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}
-	slog.Debug("config loaded", "config", cfg)
+	//slog.Debug("config loaded", "config", cfg)
 	return cfg
 }

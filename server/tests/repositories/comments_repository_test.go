@@ -14,12 +14,12 @@ import (
 )
 
 func TestCommentsRepository(t *testing.T) {
-	testUser := test_utils.InitTestUser()
-	testPost := test_utils.InitTestPost(testUser)
+	user1 := test_utils.GetUser1()
+	testPost := test_utils.InitTestPost(user1)
 
 	testVal := models.Comment{
 		Content: "test comment",
-		UserID:  testUser.ID,
+		UserID:  user1.ID,
 		PostID:  testPost.ID,
 	}
 
@@ -29,7 +29,7 @@ func TestCommentsRepository(t *testing.T) {
 		PostID:  testVal.PostID,
 	}
 
-	repository := repositories.NewGormCRUDRepository[models.Comment, uint]()
+	repository := repositories.NewCommentsRepository()
 
 	t.Run("should create a comment", func(t *testing.T) {
 		err := repository.Create(t.Context(), &testVal)

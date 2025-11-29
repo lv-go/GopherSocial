@@ -255,16 +255,16 @@ ALTER TABLE
 INSERT INTO users (username, email, password, is_active, role_id)
 VALUES ('user1@test.com',
         'user1@test.com',
-        '$2a$10$SCaWY2MSkIOfEY98tdYWReuN0aRFpzrZty2iuxEbma32byg7FfQYm',
+        '$2a$10$A0BRQ4FB9mym5uOUMkKNMO44F.Op1fiMzCK.ub8cZKsrYyosS95nS', -- S3cr3tP@ssw0rd
         true,
         1),
        ('moderator1@test.com',
         'moderator1@test.com',
-        '$2a$10$SCaWY2MSkIOfEY98tdYWReuN0aRFpzrZty2iuxEbma32byg7FfQYm',
+        '$2a$10$A0BRQ4FB9mym5uOUMkKNMO44F.Op1fiMzCK.ub8cZKsrYyosS95nS', -- S3cr3tP@ssw0rd
         true,
         2),
        ('admin1@test.com',
         'admin1@test.com',
-        '$2a$10$SCaWY2MSkIOfEY98tdYWReuN0aRFpzrZty2iuxEbma32byg7FfQYm',
+        '$2a$10$A0BRQ4FB9mym5uOUMkKNMO44F.Op1fiMzCK.ub8cZKsrYyosS95nS', -- S3cr3tP@ssw0rd
         true,
         2)
