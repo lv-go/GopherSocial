@@ -20,6 +20,7 @@ var (
 	Config                 config.Config
 	Logger                 *zap.SugaredLogger
 	Mailer                 mailer.Client
+	AuthClient             *auth.Client
 	Authenticator          auth.Authenticator
 	AuthHandlers           auth.Handlers
 	AuthMiddlewares        auth.Middlewares
@@ -38,6 +39,9 @@ var (
 
 func Setup(ctx context.Context) {
 	Config = config.Setup()
+
+	// Auth Client
+	AuthClient = auth.Setup(ctx)
 
 	// Logger
 	Logger = zap.Must(zap.NewProduction()).Sugar()
@@ -118,6 +122,7 @@ func Setup(ctx context.Context) {
 	AuthMiddlewares = auth.NewMiddlewares(
 		UsersRepository,
 		RateLimiter,
+		AuthClient,
 		Authenticator,
 		Logger,
 		Config,

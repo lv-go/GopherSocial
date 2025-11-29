@@ -1,7 +1,13 @@
 package models
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 type Follower struct {
-	FollowedID uint   `json:"followedId"`
-	FollowerID uint   `json:"followerId"`
-	CreatedAt  string `json:"created_at"`
+	FollowedID uuid.UUID `json:"followedId" gorm:"type:uuid"`
+	FollowerID uuid.UUID `json:"followerId" gorm:"type:uuid"`
+	CreatedAt  time.Time `json:"created_at"`
 }

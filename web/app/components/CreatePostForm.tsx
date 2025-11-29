@@ -2,6 +2,7 @@ import {type FormEvent, useState} from 'react';
 import './CreatePostForm.css';
 import {API_URL} from "~/config";
 import {Form, useRevalidator} from "react-router";
+import {getCurrentUser} from "~/services/auth-service";
 
 export default function CreatePostForm() {
     const [title, setTitle] = useState('')
@@ -10,7 +11,8 @@ export default function CreatePostForm() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
-        const at = sessionStorage.getItem("auth-token");
+        const currentUser = await getCurrentUser()
+        const at = await currentUser?.getIdToken()
         await fetch(`${API_URL}/posts`, {
             method: "POST",
             headers: {

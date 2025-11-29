@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/utils"
@@ -44,13 +45,9 @@ func NewUsersHandlers(
 //	@Security		ApiKeyAuth
 //	@Router			/users/{id} [get]
 func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		utils.BadRequestResponse(w, r, err)
-		return
-	}
+	userID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
 
-	user, err := h.usersRepository.GetByID(r.Context(), uint(userID))
+	user, err := h.usersRepository.GetByID(r.Context(), userID)
 	if err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
@@ -81,17 +78,13 @@ func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
-	followedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		utils.BadRequestResponse(w, r, err)
-		return
-	}
+	followedID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
 
 	ctx := r.Context()
 
-	if err := h.followersRepository.Follow(ctx, uint(followedID), followerUser.ID); err != nil {
-		switch err {
-		case gorm.ErrCheckConstraintViolated:
+	if err := h.followersRepository.Follow(ctx, followedID, followerUser.ID); err != nil {
+		switch {
+		case errors.Is(err, gorm.ErrCheckConstraintViolated):
 			utils.ConflictResponse(w, r, err)
 			return
 		default:
@@ -119,14 +112,10 @@ func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request
 func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
-	unfollowedID, err := strconv.ParseUint(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		utils.BadRequestResponse(w, r, err)
-		return
-	}
+	unfollowedID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
 	ctx := r.Context()
 
-	if err := h.followersRepository.Unfollow(ctx, uint(unfollowedID), followerUser.ID); err != nil {
+	if err := h.followersRepository.Unfollow(ctx, unfollowedID, followerUser.ID); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
 	}

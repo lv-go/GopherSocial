@@ -7,20 +7,21 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/models"
 	"gorm.io/gorm"
 )
 
 type UsersRepository struct {
-	gormCRUDRepository  CRUDRepository[models.User, uint]
-	redisCRUDRepository CRUDRepository[models.User, uint]
+	gormCRUDRepository  CRUDRepository[models.User, uuid.UUID]
+	redisCRUDRepository CRUDRepository[models.User, uuid.UUID]
 	db                  *gorm.DB
 }
 
 func NewUsersRepository() *UsersRepository {
 	return &UsersRepository{
-		gormCRUDRepository:  NewGormCRUDRepository[models.User, uint](),
-		redisCRUDRepository: NewRedisCRUDRepository[models.User, uint]("user", time.Minute),
+		gormCRUDRepository:  NewGormCRUDRepository[models.User, uuid.UUID](),
+		redisCRUDRepository: NewRedisCRUDRepository[models.User, uuid.UUID]("user", time.Minute),
 		db:                  gormDB,
 	}
 }
@@ -34,7 +35,7 @@ func (r *UsersRepository) Create(ctx context.Context, user *models.User) error {
 	return r.redisCRUDRepository.Create(ctx, user)
 }
 
-func (r *UsersRepository) GetByID(ctx context.Context, id uint) (*models.User, error) {
+func (r *UsersRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	user, err := r.redisCRUDRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (r *UsersRepository) GetPage(
 	return r.gormCRUDRepository.GetPage(ctx, filter, page)
 }
 
-func (r *UsersRepository) UpdateByID(ctx context.Context, id uint, entity *models.User) error {
+func (r *UsersRepository) UpdateByID(ctx context.Context, id uuid.UUID, entity *models.User) error {
 	err := r.gormCRUDRepository.UpdateByID(ctx, id, entity)
 	if err != nil {
 		return err
@@ -95,7 +96,7 @@ func (r *UsersRepository) UpdateByID(ctx context.Context, id uint, entity *model
 	return r.redisCRUDRepository.UpdateByID(ctx, id, entity)
 }
 
-func (r *UsersRepository) DeleteByID(ctx context.Context, id uint) error {
+func (r *UsersRepository) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	err := r.gormCRUDRepository.DeleteByID(ctx, id)
 	if err != nil {
 		return err

@@ -4,6 +4,9 @@ import CreatePostForm from "~/components/CreatePostForm";
 import Post, {type FeedPost} from "~/components/Post";
 import {API_URL} from "~/config";
 import gohper from './../../public/gohper.svg'
+import {getCurrentUser} from "~/services/auth-service";
+import {signOut} from "firebase/auth";
+import {auth} from "~/firebase-config";
 
 export function meta({}: Route.MetaArgs) {
     return [
@@ -20,10 +23,12 @@ interface Page<T> {
 }
 
 export async function clientLoader(): Promise<Page<FeedPost> | Response> {
-    let authToken = sessionStorage.getItem("auth-token");
-    if (!authToken) {
+    let currentUser = await getCurrentUser();
+    if (!currentUser) {
         return redirect("login")
     }
+    let authToken = await currentUser.getIdToken();
+    console.log("authToken: ", authToken)
     const res = await fetch(`${API_URL}/users/feed`, {
         method: "GET",
         headers: {
@@ -39,8 +44,8 @@ export default function Home({loaderData: posts}: Route.ComponentProps) {
 
     const handleLogout = () => {
         console.log("logging out...")
-        sessionStorage.removeItem("auth-token")
-        navigate("/")
+        signOut(auth)
+        navigate("/login")
     }
 
     const handleClickPost = (id: number) => () => {
@@ -48,14 +53,14 @@ export default function Home({loaderData: posts}: Route.ComponentProps) {
     }
 
     return (
-        <div id="root">
+        <div className="container mx-auto px-4 text-center">
             <nav className='nav'>
                 <div className='logo-container'>
                     <img src={gohper} className="logo"/>
                     <h1>GopherSocial</h1>
                 </div>
 
-                <button onClick={handleLogout}>Logout</button>
+                <button className="btn btn-primary" onClick={handleLogout}>Logout</button>
             </nav>
 
             <p>This is a social media platform for gophers.</p>

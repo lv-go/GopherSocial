@@ -27,4 +27,5 @@ gen-docs:
 
 .PHONY: run
 run:
+    @export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
 	@go run cmd/api/main.go

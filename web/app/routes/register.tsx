@@ -1,6 +1,8 @@
 import React, {useState} from 'react';
-import {Form, useNavigate} from "react-router";
+import {Form, Link, useNavigate} from "react-router";
 import {API_URL} from "~/config";
+import {createUserWithEmailAndPassword} from "firebase/auth";
+import {auth} from "~/firebase-config";
 
 export function meta() {
     return [
@@ -20,14 +22,8 @@ export default function Register() {
         event.preventDefault();
 
         try {
-            const resp = await fetch(`${API_URL}/auth/register`, {
-                method: "POST",
-                body: JSON.stringify({ username, email, password }),
-            })
-            if (!resp.ok) {
-                console.log('error: ', resp.statusText)
-                return
-            }
+            const userCredentials = await createUserWithEmailAndPassword(auth, email, password)
+            console.log("userCredentials: ", userCredentials)
 
             navigate("/login")
         } catch (error) {
@@ -35,42 +31,27 @@ export default function Register() {
         }
     };
 
-    return (
-        <div>
-            <h1>Register</h1>
-            <Form onSubmit={handleSubmit}>
-                <div>
-                    <label htmlFor="username">Username</label>
-                    <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+    return (<div className="flex items-center justify-center min-h-screen bg-base-200">
+        <div className="card w-full max-w-sm shadow-2xl bg-base-100">
+            <Form onSubmit={handleSubmit} className="card-body gap-5">
+                <h2 className="card-title">Register</h2>
+                <label className="validator">
+                    <span className="label">Email</span>
+                    <input type="text" className="input" required id="email" name="email" value={email}
+                           onChange={e => setEmail(e.target.value)}
+                    />
+                </label>
+                <div className="form-field">
+                    <label htmlFor="password" className="label">Password</label>
+                    <input type="password" className="input" required id="password" name="password" value={password}
+                           onChange={e => setPassword(e.target.value)}
                     />
                 </div>
-                <div>
-                    <label htmlFor="email">Email</label>
-                    <input
-                        type="text"
-                        id="email"
-                        name="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
+                <div className="flex justify-between">
+                    <button type="submit" className="btn btn-primary">Register</button>
+                    <Link to="/login" className="btn btn-link">Login</Link>
                 </div>
-                <div>
-                    <label htmlFor="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                </div>
-                <button type="submit">Register</button>
             </Form>
         </div>
-    );
+    </div>);
 }

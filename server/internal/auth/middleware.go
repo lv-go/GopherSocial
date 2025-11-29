@@ -4,11 +4,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/utils"
@@ -21,11 +21,13 @@ type Middlewares struct {
 	authenticator   Authenticator
 	logger          *zap.SugaredLogger
 	config          config.Config
+	authClient      *Client
 }
 
 func NewMiddlewares(
 	usersRepository *repositories.UsersRepository,
 	rateLimiter ratelimiter.RateLimiter,
+	authClient *Client,
 	authenticator Authenticator,
 	logger *zap.SugaredLogger,
 	config config.Config,
@@ -33,6 +35,7 @@ func NewMiddlewares(
 	return Middlewares{
 		usersRepository: usersRepository,
 		rateLimiter:     rateLimiter,
+		authClient:      authClient,
 		authenticator:   authenticator,
 		logger:          logger,
 		config:          config,
@@ -53,30 +56,20 @@ func (m *Middlewares) AuthTokenMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		token := parts[1]
-		jwtToken, err := m.authenticator.ValidateToken(token)
+		idToken := parts[1]
+		jwtToken, err := m.authClient.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
 			utils.UnauthorizedErrorResponse(w, r, err)
 			return
 		}
 
-		claims, _ := jwtToken.Claims.(jwt.MapClaims)
-
-		userID, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
-		if err != nil {
-			utils.UnauthorizedErrorResponse(w, r, err)
-			return
-		}
-
-		ctx := r.Context()
-
-		user, err := m.usersRepository.GetByID(ctx, uint(userID))
-		if err != nil {
-			utils.UnauthorizedErrorResponse(w, r, err)
-			return
-		}
-
-		r = SetUserInContext(r, user)
+		// The UID from the token is not a standard UUID. We generate a deterministic UUIDv5 from it.
+		userId := uuid.NewSHA1(uuid.NameSpaceURL, []byte(jwtToken.UID))
+		r = SetUserInContext(r, &models.User{
+			ID:       userId,
+			Email:    jwtToken.Claims["email"].(string),
+			IsActive: jwtToken.Claims["email_verified"].(bool),
+		})
 		next.ServeHTTP(w, r)
 	})
 }

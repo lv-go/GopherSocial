@@ -42,6 +42,7 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	app.AuthMiddlewares = auth.NewMiddlewares(
 		app.UsersRepository,
 		app.RateLimiter,
+		app.AuthClient,
 		app.Authenticator,
 		app.Logger,
 		app.Config,

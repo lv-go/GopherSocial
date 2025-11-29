@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/models"
 	"gorm.io/gorm"
 )
@@ -17,14 +18,14 @@ func NewFollowersRepository() *FollowersRepository {
 	}
 }
 
-func (r *FollowersRepository) Follow(ctx context.Context, followedID uint, followerID uint) error {
+func (r *FollowersRepository) Follow(ctx context.Context, followedID, followerID uuid.UUID) error {
 	return r.db.WithContext(ctx).Create(&models.Follower{
 		FollowedID: followedID,
 		FollowerID: followerID,
 	}).Error
 }
 
-func (r *FollowersRepository) Unfollow(ctx context.Context, followedID uint, followerID uint) error {
+func (r *FollowersRepository) Unfollow(ctx context.Context, followedID, followerID uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.Follower{
 		FollowedID: followedID,
 		FollowerID: followerID,
