@@ -14,52 +14,17 @@ import (
 
 type UsersHandlers struct {
 	authMiddlewares     auth.Middlewares
-	usersRepository     *repositories.UsersRepository
 	followersRepository *repositories.FollowersRepository
 }
 
 func NewUsersHandlers(
 	authMiddlewares auth.Middlewares,
-	usersRepository *repositories.UsersRepository,
 	followersRepository *repositories.FollowersRepository,
 ) UsersHandlers {
 	return UsersHandlers{
 		authMiddlewares:     authMiddlewares,
-		usersRepository:     usersRepository,
 		followersRepository: followersRepository,
 	}
-}
-
-// GetUserHandler godoc
-//
-//	@Summary		Fetches a User profile
-//	@Description	Fetches a User profile by ID
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Param			id	path		int	true	"User ID"
-//	@Success		200	{object}	store.User
-//	@Failure		400	{object}	error
-//	@Failure		404	{object}	error
-//	@Failure		500	{object}	error
-//	@Security		ApiKeyAuth
-//	@Router			/users/{id} [get]
-func (h *UsersHandlers) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	userID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
-
-	user, err := h.usersRepository.GetByID(r.Context(), userID)
-	if err != nil {
-		switch err {
-		case gorm.ErrRecordNotFound:
-			utils.NotFoundResponse(w, r, err)
-			return
-		default:
-			utils.InternalServerError(w, r, err)
-			return
-		}
-	}
-
-	utils.WriteJSON(w, http.StatusOK, user)
 }
 
 // FollowUserHandler godoc

@@ -69,7 +69,6 @@ func Mount() http.Handler {
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
 
-				r.Get("/", app.UsersHandlers.GetUserHandler)
 				r.Put("/follow", app.UsersHandlers.FollowUserHandler)
 				r.Put("/unfollow", app.UsersHandlers.UnfollowUserHandler)
 			})

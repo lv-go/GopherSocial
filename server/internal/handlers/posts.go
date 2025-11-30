@@ -26,20 +26,17 @@ type CreatePostPayload struct {
 }
 
 type PostsHandlers struct {
-	usersRepository    *repositories.UsersRepository
 	postsRepository    *repositories.PostsRepository
 	commentsRepository *repositories.CommentsRepository
 	rolesRepository    *repositories.RolesRepository
 }
 
 func NewPostsHandlers(
-	usersRepository *repositories.UsersRepository,
 	postsRepository *repositories.PostsRepository,
 	commentsRepository *repositories.CommentsRepository,
 	rolesRepository *repositories.RolesRepository,
 ) PostsHandlers {
 	return PostsHandlers{
-		usersRepository:    usersRepository,
 		postsRepository:    postsRepository,
 		commentsRepository: commentsRepository,
 		rolesRepository:    rolesRepository,
@@ -243,14 +240,6 @@ func (h *PostsHandlers) PostsContextMiddleware(next http.Handler) http.Handler {
 func getPostFromCtx(r *http.Request) *models.Post {
 	post, _ := r.Context().Value(postCtx).(*models.Post)
 	return post
-}
-
-func (h *PostsHandlers) updatePost(ctx context.Context, post *models.Post) error {
-	if err := h.postsRepository.UpdateByID(ctx, post.ID, post); err != nil {
-		return err
-	}
-
-	return h.usersRepository.DeleteByID(ctx, post.UserID)
 }
 
 func (h *PostsHandlers) CheckPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {

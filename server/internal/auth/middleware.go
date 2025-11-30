@@ -10,32 +10,28 @@ import (
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/ratelimiter"
-	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/utils"
 	"go.uber.org/zap"
 )
 
 type Middlewares struct {
-	usersRepository *repositories.UsersRepository
-	rateLimiter     ratelimiter.RateLimiter
-	logger          *zap.SugaredLogger
-	config          config.Config
-	authClient      *Client
+	rateLimiter ratelimiter.RateLimiter
+	logger      *zap.SugaredLogger
+	config      config.Config
+	authClient  *Client
 }
 
 func NewMiddlewares(
-	usersRepository *repositories.UsersRepository,
 	rateLimiter ratelimiter.RateLimiter,
 	authClient *Client,
 	logger *zap.SugaredLogger,
 	config config.Config,
 ) Middlewares {
 	return Middlewares{
-		usersRepository: usersRepository,
-		rateLimiter:     rateLimiter,
-		authClient:      authClient,
-		logger:          logger,
-		config:          config,
+		rateLimiter: rateLimiter,
+		authClient:  authClient,
+		logger:      logger,
+		config:      config,
 	}
 }
 

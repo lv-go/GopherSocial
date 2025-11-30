@@ -28,7 +28,6 @@ var (
 	HealthCheckHandlers    handlers.HealthCheckHandler
 	FeedHandlers           handlers.FeedsHandlers
 	RateLimiterMiddlewares ratelimiter.Middlewares
-	UsersRepository        *repositories.UsersRepository
 	PostRepository         *repositories.PostsRepository
 	CommentsRepository     *repositories.CommentsRepository
 	FollowersRepository    *repositories.FollowersRepository
@@ -102,7 +101,6 @@ func Setup(ctx context.Context) {
 	repositories.SetupGormDB(Config.GormDBConfig)
 
 	// Repositories
-	UsersRepository = repositories.NewUsersRepository()
 	PostRepository = repositories.NewPostsRepository()
 	CommentsRepository = repositories.NewCommentsRepository()
 	FollowersRepository = repositories.NewFollowersRepository()
@@ -111,7 +109,6 @@ func Setup(ctx context.Context) {
 	// Middlewares
 	RateLimiterMiddlewares = ratelimiter.NewMiddlewares(Config.RateLimiter, RateLimiter)
 	AuthMiddlewares = auth.NewMiddlewares(
-		UsersRepository,
 		RateLimiter,
 		AuthClient,
 		Logger,
@@ -120,8 +117,8 @@ func Setup(ctx context.Context) {
 
 	// Handlers
 	HealthCheckHandlers = handlers.NewHealthCheckHandler(Config)
-	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, UsersRepository, FollowersRepository)
-	PostsHandlers = handlers.NewPostsHandlers(UsersRepository, PostRepository, CommentsRepository, RolesRepository)
+	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, FollowersRepository)
+	PostsHandlers = handlers.NewPostsHandlers(PostRepository, CommentsRepository, RolesRepository)
 	FeedHandlers = handlers.NewFeedHandlers(PostRepository)
 
 	// Metrics collected
