@@ -79,13 +79,6 @@ func Mount() http.Handler {
 				r.Get("/feed", app.FeedHandlers.GetUserFeedHandler)
 			})
 		})
-
-		// Public routes
-		r.Route("/auth", func(r chi.Router) {
-			r.Post("/register", app.AuthHandlers.RegisterUserHandler)
-			r.Post("/login", app.AuthHandlers.LoginHandler)
-			r.Put("/confirm/{token}", app.AuthHandlers.ConfirmHandler)
-		})
 	})
 
 	return r

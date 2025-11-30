@@ -18,7 +18,6 @@ import (
 type Middlewares struct {
 	usersRepository *repositories.UsersRepository
 	rateLimiter     ratelimiter.RateLimiter
-	authenticator   Authenticator
 	logger          *zap.SugaredLogger
 	config          config.Config
 	authClient      *Client
@@ -28,7 +27,6 @@ func NewMiddlewares(
 	usersRepository *repositories.UsersRepository,
 	rateLimiter ratelimiter.RateLimiter,
 	authClient *Client,
-	authenticator Authenticator,
 	logger *zap.SugaredLogger,
 	config config.Config,
 ) Middlewares {
@@ -36,7 +34,6 @@ func NewMiddlewares(
 		usersRepository: usersRepository,
 		rateLimiter:     rateLimiter,
 		authClient:      authClient,
-		authenticator:   authenticator,
 		logger:          logger,
 		config:          config,
 	}

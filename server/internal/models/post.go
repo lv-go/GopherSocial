@@ -20,5 +20,4 @@ type Post struct {
 	Tags       pq.StringArray `json:"tags" gorm:"type:text[]"`
 	Version    int            `json:"version"`
 	Comments   []Comment      `json:"comments" gorm:"foreignKey:PostID"`
-	User       User           `json:"user"`
 }

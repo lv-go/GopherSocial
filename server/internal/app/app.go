@@ -21,8 +21,6 @@ var (
 	Logger                 *zap.SugaredLogger
 	Mailer                 mailer.Client
 	AuthClient             *auth.Client
-	Authenticator          auth.Authenticator
-	AuthHandlers           auth.Handlers
 	AuthMiddlewares        auth.Middlewares
 	RateLimiter            ratelimiter.RateLimiter
 	UsersHandlers          handlers.UsersHandlers
@@ -100,13 +98,6 @@ func Setup(ctx context.Context) {
 		Logger.Fatal(err)
 	}
 
-	// Authenticator
-	Authenticator = auth.NewJWTAuthenticator(
-		Config.Auth.Token.Secret,
-		Config.Auth.Token.Iss,
-		Config.Auth.Token.Iss,
-	)
-
 	repositories.SetupRedisClient(Config.RedisCfg)
 	repositories.SetupGormDB(Config.GormDBConfig)
 
@@ -123,19 +114,11 @@ func Setup(ctx context.Context) {
 		UsersRepository,
 		RateLimiter,
 		AuthClient,
-		Authenticator,
 		Logger,
 		Config,
 	)
 
 	// Handlers
-	AuthHandlers = auth.NewHandlers(
-		UsersRepository,
-		Mailer,
-		Logger,
-		Config,
-		Authenticator,
-	)
 	HealthCheckHandlers = handlers.NewHealthCheckHandler(Config)
 	UsersHandlers = handlers.NewUsersHandlers(AuthMiddlewares, UsersRepository, FollowersRepository)
 	PostsHandlers = handlers.NewPostsHandlers(UsersRepository, PostRepository, CommentsRepository, RolesRepository)

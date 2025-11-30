@@ -21,12 +21,6 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 	// Uncomment to enable logs
 	// logger := zap.Must(zap.NewProduction()).Sugar()
 
-	app.Authenticator = auth.NewJWTAuthenticator(
-		cfg.Auth.Token.Secret,
-		cfg.Auth.Token.Iss,
-		cfg.Auth.Token.Iss,
-	)
-
 	// Rate limiter
 	app.RateLimiter = ratelimiter.NewFixedWindowLimiter(
 		cfg.RateLimiter.RequestsPerTimeFrame,
@@ -43,16 +37,8 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 		app.UsersRepository,
 		app.RateLimiter,
 		app.AuthClient,
-		app.Authenticator,
 		app.Logger,
 		app.Config,
-	)
-	app.AuthHandlers = auth.NewHandlers(
-		app.UsersRepository,
-		app.Mailer,
-		app.Logger,
-		app.Config,
-		app.Authenticator,
 	)
 	app.UsersHandlers = handlers.NewUsersHandlers(app.AuthMiddlewares, app.UsersRepository, app.FollowersRepository)
 }

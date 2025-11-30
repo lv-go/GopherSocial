@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
@@ -23,10 +24,11 @@ func init() {
 }
 
 func GetUser1() *models.User {
-	userRepository := repositories.NewUsersRepository()
-	testUser, _ := userRepository.GetOne(context.Background(), models.User{Username: "user1@test.com"})
-
-	return testUser
+	return &models.User{
+		ID:       uuid.MustParse("00000001-0000-0000-0000-000000000001"),
+		Email:    "user1@email.com",
+		IsActive: true,
+	}
 }
 
 func InitTestPost(testUser *models.User) *models.Post {
