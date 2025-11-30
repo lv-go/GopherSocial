@@ -18,12 +18,12 @@ type Middlewares struct {
 	rateLimiter ratelimiter.RateLimiter
 	logger      *zap.SugaredLogger
 	config      config.Config
-	authClient  *Client
+	authClient  Client
 }
 
 func NewMiddlewares(
 	rateLimiter ratelimiter.RateLimiter,
-	authClient *Client,
+	authClient Client,
 	logger *zap.SugaredLogger,
 	config config.Config,
 ) Middlewares {

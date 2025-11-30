@@ -33,7 +33,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	app.Setup(ctx)
+	app.Setup(ctx, "")
 
 	mux := api.Mount()
 

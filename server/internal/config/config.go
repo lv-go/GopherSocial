@@ -63,7 +63,7 @@ type DbConfig struct {
 	MaxIdleTime  string
 }
 
-func Setup() Config {
+func Setup(configPath string) Config {
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv != "" {
 		appEnv = "." + appEnv
@@ -74,7 +74,7 @@ func Setup() Config {
 	}
 
 	// Set the name of the config file (without extension)
-	viper.SetConfigName("config" + appEnv)
+	viper.SetConfigName(configPath + "config" + appEnv)
 	// Set the type of the config file
 	viper.SetConfigType("yaml")
 	// Add the path where Viper should look for the config file

@@ -14,7 +14,7 @@ type mailtrapClient struct {
 	apiKey    string
 }
 
-func NewMailTrapClient(apiKey, fromEmail string) (mailtrapClient, error) {
+func NewMailTrapClient(apiKey, fromEmail string) (Client, error) {
 	if apiKey == "" {
 		return mailtrapClient{}, errors.New("api key is required")
 	}

@@ -10,7 +10,7 @@ import (
 )
 
 func TestRateLimiterMiddleware(t *testing.T) {
-	app.Setup(t.Context())
+	app.Setup(t.Context(), "../../")
 	cfg := app.Config
 	ts := httptest.NewServer(api.Mount())
 	defer ts.Close()

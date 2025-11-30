@@ -65,7 +65,7 @@ func Mount() http.Handler {
 			})
 		})
 
-		r.Route("/users", func(r chi.Router) {
+		r.Route("/user", func(r chi.Router) {
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.AuthMiddlewares.AuthTokenMiddleware)
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
@@ -13,12 +12,7 @@ import (
 )
 
 func init() {
-	err := godotenv.Load("../../.env.local")
-	if err != nil {
-		panic(err)
-	}
-
-	cfg := config.Setup()
+	cfg := config.Setup("../../")
 	repositories.SetupGormDB(cfg.GormDBConfig)
 	repositories.SetupRedisClient(cfg.RedisCfg)
 }

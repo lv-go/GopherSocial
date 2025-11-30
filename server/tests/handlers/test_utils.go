@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,10 +10,38 @@ import (
 	"github.com/sikozonpc/social/internal/app"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/config"
-	"github.com/sikozonpc/social/internal/handlers"
 	"github.com/sikozonpc/social/internal/ratelimiter"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 )
+
+type mockAuthClient struct {
+	mock.Mock
+}
+
+func (m *mockAuthClient) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
+	args := m.Called(ctx, idToken)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*auth.Token), nil
+}
+
+func setupMockAuthClient() {
+	authClient := new(mockAuthClient)
+	authClient.On("VerifyIDToken", mock.Anything, "invalid_token").
+		Return(nil, errors.New("invalid_token"))
+	authClient.On("VerifyIDToken", mock.Anything, "valid_token").
+		Return(&auth.Token{
+			UID: "00000001-0000-0000-0000-000000000001",
+			Claims: map[string]interface{}{
+				"email":          "user1@email.com",
+				"email_verified": true,
+			},
+		})
+
+	app.AuthClient = authClient
+}
 
 func setupTestApplication(t *testing.T, cfg config.Config) {
 	t.Helper()
@@ -36,7 +66,6 @@ func setupTestApplication(t *testing.T, cfg config.Config) {
 		app.Logger,
 		app.Config,
 	)
-	app.UsersHandlers = handlers.NewUsersHandlers(app.AuthMiddlewares, app.FollowersRepository)
 }
 
 func executeRequest(req *http.Request, mux http.Handler) *httptest.ResponseRecorder {

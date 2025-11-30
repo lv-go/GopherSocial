@@ -8,9 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/config"
-	"github.com/sikozonpc/social/internal/db"
 	"github.com/sikozonpc/social/internal/handlers"
-	"github.com/sikozonpc/social/internal/mailer"
 	"github.com/sikozonpc/social/internal/ratelimiter"
 	"github.com/sikozonpc/social/internal/repositories"
 	"go.uber.org/zap"
@@ -19,8 +17,7 @@ import (
 var (
 	Config                 config.Config
 	Logger                 *zap.SugaredLogger
-	Mailer                 mailer.Client
-	AuthClient             *auth.Client
+	AuthClient             auth.Client
 	AuthMiddlewares        auth.Middlewares
 	RateLimiter            ratelimiter.RateLimiter
 	UsersHandlers          handlers.UsersHandlers
@@ -34,8 +31,8 @@ var (
 	RolesRepository        *repositories.RolesRepository
 )
 
-func Setup(ctx context.Context) {
-	Config = config.Setup()
+func Setup(ctx context.Context, configPath string) {
+	Config = config.Setup(configPath)
 
 	// Auth Client
 	AuthClient = auth.Setup(ctx)
@@ -43,27 +40,6 @@ func Setup(ctx context.Context) {
 	// Logger
 	Logger = zap.Must(zap.NewProduction()).Sugar()
 	defer Logger.Sync()
-
-	// Main Database
-	_db, err := db.New(
-		Config.Db.Addr,
-		Config.Db.MaxOpenConns,
-		Config.Db.MaxIdleConns,
-		Config.Db.MaxIdleTime,
-	)
-	if err != nil {
-		Logger.Fatal(err)
-	}
-
-	go func() {
-		<-ctx.Done()
-		Logger.Info("closing database connection pool")
-		err := _db.Close()
-		if err != nil {
-			Logger.Error(err)
-		}
-	}()
-	Logger.Info("database connection pool established")
 
 	// Cache
 	var rdb *redis.Client
@@ -86,18 +62,6 @@ func Setup(ctx context.Context) {
 		Config.RateLimiter.TimeFrame,
 	)
 
-	// Mailer
-	// mailer := mailer.NewSendgrid(cfg.mail.SendGrid.ApiKey, cfg.mail.FromEmail)
-	if Config.Env != "production" {
-		Mailer = mailer.NewMockMailerClient()
-	} else {
-		Mailer, err = mailer.NewMailTrapClient(Config.Mail.MailTrap.ApiKey, Config.Mail.FromEmail)
-	}
-	if err != nil {
-		Logger.Fatal(err)
-	}
-
-	repositories.SetupRedisClient(Config.RedisCfg)
 	repositories.SetupGormDB(Config.GormDBConfig)
 
 	// Repositories
@@ -123,9 +87,6 @@ func Setup(ctx context.Context) {
 
 	// Metrics collected
 	expvar.NewString("version").Set(Config.Version)
-	expvar.Publish("database", expvar.Func(func() any {
-		return _db.Stats()
-	}))
 	expvar.Publish("goroutines", expvar.Func(func() any {
 		return runtime.NumGoroutine()
 	}))
