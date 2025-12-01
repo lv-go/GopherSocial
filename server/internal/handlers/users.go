@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/auth"
 	"github.com/sikozonpc/social/internal/repositories"
 	"github.com/sikozonpc/social/internal/utils"
@@ -43,7 +42,7 @@ func NewUsersHandlers(
 func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
-	followedID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
+	followedID := chi.URLParam(r, "userID")
 
 	ctx := r.Context()
 
@@ -77,7 +76,7 @@ func (h *UsersHandlers) FollowUserHandler(w http.ResponseWriter, r *http.Request
 func (h *UsersHandlers) UnfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := auth.GetUserFromContext(r)
 
-	unfollowedID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(chi.URLParam(r, "userID")))
+	unfollowedID := chi.URLParam(r, "userID")
 	ctx := r.Context()
 
 	if err := h.followersRepository.Unfollow(ctx, unfollowedID, followerUser.ID); err != nil {

@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/models"
 )
 
@@ -19,6 +18,6 @@ func NewPostsRepository() *PostsRepository {
 	}
 }
 
-func (repo *PostsRepository) GetPageByUserID(ctx context.Context, userID uuid.UUID, page PageQuery) (*Page[models.Post], error) {
+func (repo *PostsRepository) GetPageByUserID(ctx context.Context, userID string, page PageQuery) (*Page[models.Post], error) {
 	return repo.GetPage(ctx, models.Post{UserID: userID}, page)
 }

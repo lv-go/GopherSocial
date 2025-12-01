@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
@@ -16,7 +15,7 @@ type Post struct {
 	DeletedAt  gorm.DeletedAt `gorm:"index"`
 	Content    string         `json:"content"`
 	Title      string         `json:"title"`
-	UserID     uuid.UUID      `json:"userId" gorm:"type:uuid"`
+	UserID     string         `json:"userId" gorm:"type:uuid"`
 	Tags       pq.StringArray `json:"tags" gorm:"type:text[]"`
 	Version    int            `json:"version"`
 	Comments   []Comment      `json:"comments" gorm:"foreignKey:PostID"`

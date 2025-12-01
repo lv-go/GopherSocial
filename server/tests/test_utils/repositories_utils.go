@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/repositories"
@@ -19,7 +18,7 @@ func init() {
 
 func GetUser1() *models.User {
 	return &models.User{
-		ID:       uuid.MustParse("00000001-0000-0000-0000-000000000001"),
+		ID:       "GhTjK7pQ2xR5wVfB9zLdYc4m",
 		Email:    "user1@email.com",
 		IsActive: true,
 	}

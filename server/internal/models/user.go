@@ -2,12 +2,10 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type User struct {
-	ID             uuid.UUID      `json:"id"`
+	ID             string         `json:"id"`
 	Username       string         `json:"username"`
 	Email          string         `json:"email"`
 	Password       string         `json:"-"`
@@ -20,7 +18,7 @@ type User struct {
 }
 
 type UserInvitation struct {
-	UserID uuid.UUID `json:"userId" gorm:"type:uuid"`
+	UserID string    `json:"userId" gorm:"type:uuid"`
 	Token  string    `json:"token"`
 	Expiry time.Time `json:"expiry"`
 }

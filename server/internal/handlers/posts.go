@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -173,9 +172,8 @@ type UpdatePostPayload struct {
 //	@Security		ApiKeyAuth
 //	@Router			/posts/{id} [patch]
 func (h *PostsHandlers) UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	var id uint
-	err := json.Unmarshal([]byte(idStr), &id)
+	idParam := chi.URLParam(r, "postID")
+	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
@@ -203,7 +201,7 @@ func (h *PostsHandlers) UpdatePostHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := h.postsRepository.UpdateByID(ctx, id, post); err != nil {
+	if err := h.postsRepository.UpdateByID(ctx, uint(id), post); err != nil {
 		utils.InternalServerError(w, r, err)
 	}
 

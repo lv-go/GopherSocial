@@ -2,8 +2,6 @@ package app
 
 import (
 	"context"
-	"expvar"
-	"runtime"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/sikozonpc/social/internal/auth"
@@ -86,8 +84,8 @@ func Setup(ctx context.Context, configPath string) {
 	FeedHandlers = handlers.NewFeedHandlers(PostRepository)
 
 	// Metrics collected
-	expvar.NewString("version").Set(Config.Version)
-	expvar.Publish("goroutines", expvar.Func(func() any {
-		return runtime.NumGoroutine()
-	}))
+	//expvar.NewString("version").Set(Config.Version)
+	//expvar.Publish("goroutines", expvar.Func(func() any {
+	//	return runtime.NumGoroutine()
+	//}))
 }

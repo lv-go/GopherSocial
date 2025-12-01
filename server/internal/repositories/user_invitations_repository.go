@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/models"
 	"gorm.io/gorm"
 )
@@ -21,6 +20,6 @@ func NewUserInvitationsRepository(
 	}
 }
 
-func (r *UserInvitationsRepository) DeleteByUserID(ctx context.Context, userId uuid.UUID) error {
+func (r *UserInvitationsRepository) DeleteByUserID(ctx context.Context, userId string) error {
 	return r.DeleteOne(ctx, models.UserInvitation{UserID: userId})
 }

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/sikozonpc/social/internal/config"
 	"github.com/sikozonpc/social/internal/models"
 	"github.com/sikozonpc/social/internal/ratelimiter"
@@ -57,9 +56,8 @@ func (m *Middlewares) AuthTokenMiddleware(next http.Handler) http.Handler {
 		}
 
 		// The UID from the token is not a standard UUID. We generate a deterministic UUIDv5 from it.
-		userId := uuid.NewSHA1(uuid.NameSpaceURL, []byte(jwtToken.UID))
 		r = SetUserInContext(r, &models.User{
-			ID:       userId,
+			ID:       jwtToken.UID,
 			Email:    jwtToken.Claims["email"].(string),
 			IsActive: jwtToken.Claims["email_verified"].(bool),
 		})

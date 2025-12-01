@@ -29,7 +29,7 @@ export async function clientLoader(): Promise<Page<FeedPost> | Response> {
     }
     let authToken = await currentUser.getIdToken();
     console.log("authToken: ", authToken)
-    const res = await fetch(`${API_URL}/users/feed`, {
+    const res = await fetch(`${API_URL}/user/feed`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",

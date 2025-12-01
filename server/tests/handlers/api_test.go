@@ -7,11 +7,15 @@ import (
 
 	"github.com/sikozonpc/social/internal/api"
 	"github.com/sikozonpc/social/internal/app"
+	"github.com/sikozonpc/social/internal/config"
+	"github.com/sikozonpc/social/tests/test_utils"
 )
 
 func TestRateLimiterMiddleware(t *testing.T) {
-	app.Setup(t.Context(), "../../")
+	app.Config = config.Setup("../../")
 	cfg := app.Config
+	test_utils.SetupTestApplication(t)
+
 	ts := httptest.NewServer(api.Mount())
 	defer ts.Close()
 
