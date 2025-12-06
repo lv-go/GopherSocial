@@ -12,7 +12,7 @@ func InternalServerError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func ForbiddenResponse(w http.ResponseWriter, r *http.Request) {
-	slog.Warn("forbidden", "method", r.Method, "path", r.URL.Path, "error")
+	slog.Warn("forbidden", "method", r.Method, "path", r.URL.Path)
 
 	WriteJSONMessage(w, http.StatusForbidden, "forbidden")
 }

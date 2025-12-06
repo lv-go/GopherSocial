@@ -90,7 +90,7 @@ func (r *redisCRUDRepository[T, ID]) GetPage(ctx context.Context, filter interfa
 }
 
 func (r *redisCRUDRepository[T, ID]) UpdateByID(ctx context.Context, id ID, entity *T) error {
-	cacheKey := fmt.Sprintf("user-%d", id)
+	cacheKey := fmt.Sprintf("%s-%v", r.cacheBaseKey, id)
 
 	jsonEntity, err := json.Marshal(entity)
 	if err != nil {
@@ -101,7 +101,7 @@ func (r *redisCRUDRepository[T, ID]) UpdateByID(ctx context.Context, id ID, enti
 }
 
 func (r *redisCRUDRepository[T, ID]) DeleteByID(ctx context.Context, id ID) error {
-	cacheKey := fmt.Sprintf("user-%d", id)
+	cacheKey := fmt.Sprintf("%s-%v", r.cacheBaseKey, id)
 	intCmd := r.redisClient.Del(ctx, cacheKey)
 	if intCmd.Err() != nil {
 		return intCmd.Err()
