@@ -3,7 +3,7 @@ MIGRATIONS_PATH = ./cmd/migrate/migrations
 
 .PHONY: test
 test:
-	@go test -v ./...
+	@go test -v ./tests/...
 
 .PHONY: migrate-create
 migration:
@@ -27,5 +27,4 @@ gen-docs:
 
 .PHONY: run
 run:
-    @export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
-	@go run cmd/api/main.go
+	@FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 go run cmd/api/main.go

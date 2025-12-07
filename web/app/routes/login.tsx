@@ -1,8 +1,9 @@
-import React, {type FormEvent, useState} from 'react';
-import {API_URL} from "~/config";
-import {Form, Link, useNavigate} from "react-router";
-import {signInWithEmailAndPassword} from "firebase/auth";
-import {auth} from "~/firebase-config";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { type FormEvent, useState } from 'react';
+import { Form, Link, useNavigate } from "react-router";
+import { auth } from "~/firebase-config";
+
+import toast from "react-hot-toast";
 
 export default function Login() {
     const [email, setEmail] = useState("")
@@ -12,13 +13,12 @@ export default function Login() {
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         try {
-            const userCredentials = await signInWithEmailAndPassword(auth, email, password)
-            console.log("userCredentials: ", userCredentials)
-            // sessionStorage.setItem("auth-token", userCredentials.user.accessToken)
+            await signInWithEmailAndPassword(auth, email, password)
 
             navigate("/")
-        } catch (error) {
+        } catch (error: any) {
             console.log('error: ', error)
+            toast.error(error.code)
         }
     }
 
@@ -30,13 +30,13 @@ export default function Login() {
                 <label className="validator">
                     <span className="label">Email</span>
                     <input type="email" className="input" name="email" placeholder="email..." required value={email}
-                           onChange={(v) => setEmail(v.target.value)}/>
+                        onChange={(v) => setEmail(v.target.value)} />
                 </label>
 
                 <label className="validator">
                     <span className="label">Password</span>
                     <input type="password" className="input" name="password" placeholder="password..." required value={password}
-                           onChange={(v) => setPassword(v.target.value)}/>
+                        onChange={(v) => setPassword(v.target.value)} />
                 </label>
 
                 <div className="card-actions justify-between">

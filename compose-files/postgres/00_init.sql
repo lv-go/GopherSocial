@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS posts
     id         bigserial PRIMARY KEY,
     version    INT                                  DEFAULT 0,
     title      text                        NOT NULL,
-    user_id    CHAR(24)                    NOT NULL,
+    user_id    VARCHAR(28)                    NOT NULL,
     content    text                        NOT NULL,
     tags       VARCHAR(100)[],
     created_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS comments
 (
     id         bigserial PRIMARY KEY,
     post_id    bigserial                   NOT NULL,
-    user_id    CHAR(24)                    NOT NULL,
+    user_id    VARCHAR(28)                    NOT NULL,
     content    TEXT                        NOT NULL,
     created_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
     updated_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS comments
 
 CREATE TABLE IF NOT EXISTS followers
 (
-    user_id     CHAR(24)                    NOT NULL,
+    user_id     VARCHAR(28)                    NOT NULL,
     follower_id bigint                      NOT NULL,
     created_at  timestamp(0) with time zone NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, follower_id)
@@ -51,6 +51,6 @@ CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments (post_id);
 CREATE TABLE IF NOT EXISTS user_invitations
 (
     token   bytea PRIMARY KEY,
-    user_id CHAR(24)                    NOT NULL,
+    user_id VARCHAR(28)                    NOT NULL,
     expiry  TIMESTAMP(0) WITH TIME ZONE NOT NULL
 );
